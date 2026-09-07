@@ -1,9 +1,9 @@
-import dayjs from 'dayjs';
+import { dayjsIST } from '../../../utils/time.util';
 
 import { AttendanceStatus } from '../../../common/enums/AttendanceStatus.enum';
 
 export function calculateAttendanceStatus(checkIn: Date): AttendanceStatus {
-  const time = dayjs(checkIn);
+  const time = dayjsIST(checkIn);
 
   // 11:00 AM
   const presentEnd = time

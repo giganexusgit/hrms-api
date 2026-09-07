@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository, IsNull } from 'typeorm';
 import dayjs from 'dayjs';
 
-import { nowIST, todayIST } from '../../../utils/time.util';
+import { nowIST, todayIST, dayjsIST } from '../../../utils/time.util';
 import { Attendance } from '../entities/attendance.entity';
 import { AttendanceValidationService } from './attendance-validation.service';
 import { AttendanceStatus } from '../../../common/enums/AttendanceStatus.enum';
@@ -79,9 +79,9 @@ export class AttendanceService {
       const shift = this.validationService.getEffectiveShift(employee);
       const [startHour, startMinute] = shift.startTime.split(':').map(Number);
       const [endHour] = shift.endTime.split(':').map(Number);
-      const nowDayjs = dayjs(nowDate);
+      const nowDayjs = dayjsIST(nowDate);
 
-      let shiftStartTime = dayjs(nowDate)
+      let shiftStartTime = dayjsIST(nowDate)
         .hour(startHour)
         .minute(startMinute)
         .second(0)
@@ -164,11 +164,11 @@ export class AttendanceService {
       // Auto-finalize break if employee checked out while still on break
       if (attendance!.workStatus === EmployeeWorkStatus.ON_BREAK && attendance!.lastBreakStart) {
         attendance!.lastBreakEnd = nowDate;
-        const breakDuration = Math.max(0, Math.floor(now.diff(dayjs(attendance!.lastBreakStart), 'minute')));
+        const breakDuration = Math.max(0, Math.floor(now.diff(dayjsIST(attendance!.lastBreakStart), 'minute')));
         attendance!.totalBreakMinutes = (attendance!.totalBreakMinutes || 0) + breakDuration;
       }
 
-      const checkInTime = dayjs(attendance!.checkIn);
+      const checkInTime = dayjsIST(attendance!.checkIn);
       const shift = this.validationService.getEffectiveShift(employee);
 
       let breakMinutes = 0;
@@ -285,7 +285,7 @@ export class AttendanceService {
       await this.notificationService.createNotification({
         employeeId,
         title: 'Break Started',
-        message: `Your break has started at ${dayjs(nowDate).format('HH:mm')}. You have ${remainingBreak} minutes remaining for today.`,
+        message: `Your break has started at ${dayjsIST(nowDate).format('HH:mm')}. You have ${remainingBreak} minutes remaining for today.`,
         type: NotificationType.ATTENDANCE,
         referenceId: saved.id,
       });
@@ -331,7 +331,7 @@ export class AttendanceService {
 
       attendance.lastBreakEnd = nowDate;
       const sessionMinutes = attendance.lastBreakStart
-        ? Math.max(0, Math.floor(now.diff(dayjs(attendance.lastBreakStart), 'minute')))
+        ? Math.max(0, Math.floor(now.diff(dayjsIST(attendance.lastBreakStart), 'minute')))
         : 0;
 
       attendance.totalBreakMinutes = (attendance.totalBreakMinutes || 0) + sessionMinutes;

@@ -9,7 +9,7 @@ import { Employee } from '../../employees/entities/employee.entity';
 import { CorrectionRequestDto } from '../dto/correction-request.dto';
 import { CorrectionStatus } from '../../../common/enums/CorrectionStatus.enum';
 import { AttendanceStatus } from '../../../common/enums/AttendanceStatus.enum';
-import { formatIST } from '../../../utils/time.util';
+import { formatIST, dayjsIST } from '../../../utils/time.util';
 import { DataScopeService } from '../../../common/services/data-scope.service';
 import { NotificationService } from '../../notification/notification.service';
 import { NotificationType } from '../../../common/enums/NotificationType.enum';
@@ -118,7 +118,7 @@ export class CorrectionService {
   }
 
   private calculateStatus(checkIn: Date): AttendanceStatus {
-    const time = dayjs(checkIn);
+    const time = dayjsIST(checkIn);
 
     const presentEnd = time.startOf('day').hour(10).minute(30).second(0);
     const lateEnd = time.startOf('day').hour(12).minute(30).second(0);

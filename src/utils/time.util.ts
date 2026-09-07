@@ -42,6 +42,14 @@ export const toISTDate = (date?: Date | string) => {
 };
 
 /**
+ * Create a dayjs instance localized to IST
+ */
+export const dayjsIST = (date?: Date | string | dayjs.Dayjs | null) => {
+  if (!date) return dayjs().tz(IST);
+  return dayjs(date).tz(IST);
+};
+
+/**
  * (Backward compatibility)
  * If used elsewhere in your codebase
  */

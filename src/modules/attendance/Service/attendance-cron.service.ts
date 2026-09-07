@@ -21,7 +21,7 @@ import { EmployeeWorkStatus } from '../../../common/enums/employee-work-status.e
 
 import { LeaveStatusEnum } from '../../../common/enums/leave-status.enum';
 
-import { nowIST, todayIST } from '../../../utils/time.util';
+import { nowIST, todayIST, dayjsIST } from '../../../utils/time.util';
 import { WeekNumberEnum } from '../../../common/enums/WeekNumberEnum.enum';
 import { WeekDayEnum } from '../../../common/enums/WeekDayEnum.enum';
 import dayjs from 'dayjs';
@@ -106,7 +106,7 @@ export class AttendanceCronService {
           const graceMinutes = shift.maxAllowedOvertimeMinutes || 240;
 
           if (shift.isFlexible) {
-            officialShiftEndTime = dayjs(attendance.checkIn).add(
+            officialShiftEndTime = dayjsIST(attendance.checkIn).add(
               shift.standardWorkingMinutes,
               'minute',
             );
@@ -117,7 +117,7 @@ export class AttendanceCronService {
           } else {
             const [endHour, endMinute] = shift.endTime.split(':').map(Number);
             const [startHour] = shift.startTime.split(':').map(Number);
-            officialShiftEndTime = dayjs(attendance.date)
+            officialShiftEndTime = dayjsIST(attendance.date)
               .hour(endHour)
               .minute(endMinute)
               .second(0)
@@ -140,7 +140,7 @@ export class AttendanceCronService {
             // Finalize break if employee was left on break
             if (attendance.workStatus === EmployeeWorkStatus.ON_BREAK && attendance.lastBreakStart) {
               attendance.lastBreakEnd = autoCheckoutTime.toDate();
-              const breakDuration = Math.max(0, Math.floor(autoCheckoutTime.diff(dayjs(attendance.lastBreakStart), 'minute')));
+              const breakDuration = Math.max(0, Math.floor(autoCheckoutTime.diff(dayjsIST(attendance.lastBreakStart), 'minute')));
               attendance.totalBreakMinutes = (attendance.totalBreakMinutes || 0) + breakDuration;
             }
 
@@ -151,7 +151,7 @@ export class AttendanceCronService {
 
             const totalWorkedMinutes = Math.max(
               0,
-              autoCheckoutTime.diff(dayjs(attendance.checkIn), 'minute') - breakDeduction,
+              autoCheckoutTime.diff(dayjsIST(attendance.checkIn), 'minute') - breakDeduction,
             );
 
             attendance.checkOut = autoCheckoutTime.toDate();
@@ -419,7 +419,7 @@ export class AttendanceCronService {
         }
 
         const [startHour, startMinute] = shift.startTime.split(':').map(Number);
-        const shiftStartTime = dayjs(today)
+        const shiftStartTime = dayjsIST(today)
           .hour(startHour)
           .minute(startMinute)
           .second(0)
@@ -525,14 +525,14 @@ export class AttendanceCronService {
         let officialShiftEndTime: dayjs.Dayjs;
 
         if (shift.isFlexible) {
-          officialShiftEndTime = dayjs(attendance.checkIn).add(
+          officialShiftEndTime = dayjsIST(attendance.checkIn).add(
             shift.standardWorkingMinutes,
             'minute',
           );
         } else {
           const [endHour, endMinute] = shift.endTime.split(':').map(Number);
           const [startHour] = shift.startTime.split(':').map(Number);
-          officialShiftEndTime = dayjs(attendance.date)
+          officialShiftEndTime = dayjsIST(attendance.date)
             .hour(endHour)
             .minute(endMinute)
             .second(0)

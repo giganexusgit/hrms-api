@@ -7,7 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { IsNull, Repository } from 'typeorm';
-import { todayIST } from 'src/utils/time.util';
+import { todayIST, dayjsIST } from 'src/utils/time.util';
 import { Employee } from '../../employees/entities/employee.entity';
 import dayjs from 'dayjs';
 import { Attendance } from '../entities/attendance.entity';
@@ -110,9 +110,9 @@ export class AttendanceValidationService {
     if (!shift.isFlexible) {
       const [startHour, startMinute] = shift.startTime.split(':').map(Number);
       const [endHour] = shift.endTime.split(':').map(Number);
-      const now = dayjs(nowDate);
+      const now = dayjsIST(nowDate);
 
-      let shiftStartTime = dayjs(nowDate)
+      let shiftStartTime = dayjsIST(nowDate)
         .hour(startHour)
         .minute(startMinute)
         .second(0)
@@ -184,7 +184,7 @@ export class AttendanceValidationService {
       const [endHour, endMinute] = shift.endTime.split(':').map(Number);
       const [startHour] = shift.startTime.split(':').map(Number);
       
-      let shiftEndTime = dayjs(nowDate)
+      let shiftEndTime = dayjsIST(nowDate)
         .hour(endHour)
         .minute(endMinute)
         .second(0)
@@ -192,7 +192,7 @@ export class AttendanceValidationService {
 
       const isCrossMidnight = endHour < startHour;
       if (isCrossMidnight) {
-        if (dayjs(nowDate).hour() >= startHour) {
+        if (dayjsIST(nowDate).hour() >= startHour) {
           shiftEndTime = shiftEndTime.add(1, 'day');
         }
       }
@@ -205,7 +205,7 @@ export class AttendanceValidationService {
         'minute',
       );
 
-      if (dayjs(nowDate).isBefore(earlyLeaveThreshold)) {
+      if (dayjsIST(nowDate).isBefore(earlyLeaveThreshold)) {
         isEarly = true;
       }
     }
@@ -234,7 +234,7 @@ export class AttendanceValidationService {
   async validateWorkingDay(employeeId: string) {
     const today = todayIST();
 
-    const now = dayjs(todayIST());
+    const now = dayjsIST(todayIST());
 
     const holiday = await this.holidayRepo.findOne({
       where: {
