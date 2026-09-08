@@ -95,18 +95,24 @@ describe('SalaryStructureController', () => {
   describe('findAll', () => {
     it('should call service.findAll', async () => {
       const query = { page: '1' };
-      const result = await controller.findAll(query);
+      const currentUser = { id: 'admin-1' };
+      const result = await controller.findAll(query, currentUser);
       expect(result.data).toEqual([mockSalaryResponse]);
-      expect(mockSalaryStructureService.findAll).toHaveBeenCalledWith(query);
+      expect(mockSalaryStructureService.findAll).toHaveBeenCalledWith(
+        query,
+        currentUser,
+      );
     });
   });
 
   describe('findOne', () => {
     it('should call service.findOne', async () => {
-      const result = await controller.findOne('sal-123');
+      const currentUser = { id: 'admin-1' };
+      const result = await controller.findOne('sal-123', currentUser);
       expect(result).toEqual(mockSalaryResponse);
       expect(mockSalaryStructureService.findOne).toHaveBeenCalledWith(
         'sal-123',
+        currentUser,
       );
     });
   });
