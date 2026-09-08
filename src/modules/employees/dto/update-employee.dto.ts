@@ -59,10 +59,6 @@ export class UpdateEmployeeDto {
 
   @IsOptional()
   @IsUUID()
-  roleId?: string;
-
-  @IsOptional()
-  @IsUUID()
   departmentId?: string;
 
   @IsOptional()
