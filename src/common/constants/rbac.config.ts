@@ -120,6 +120,7 @@ export const RBAC_CONFIG = {
     PermissionEnum.EMPLOYEE_UPDATE,
 
     PermissionEnum.ATTENDANCE_CORRECTION_CREATE,
+    PermissionEnum.ATTENDANCE_CORRECTION_READ,
 
     PermissionEnum.LEAVE_CREATE,
     PermissionEnum.LEAVE_READ,
@@ -139,11 +140,9 @@ export const RBAC_CONFIG = {
     PermissionEnum.RESIGNATION_CREATE,
     PermissionEnum.RESIGNATION_READ,
 
-    // PermissionEnum.LEAVE_LEDGER_READ,
+    PermissionEnum.LEAVE_POLICY_READ,
 
-    // PermissionEnum.LEAVE_POLICY_READ,
-
-    // PermissionEnum.LEAVE_TYPE_READ,
+    PermissionEnum.LEAVE_TYPE_READ,
 
     PermissionEnum.NOTIFICATION_READ,
     PermissionEnum.NOTIFICATION_UPDATE,

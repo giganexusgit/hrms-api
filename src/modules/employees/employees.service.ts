@@ -275,6 +275,14 @@ export class EmployeesService {
       throw new NotFoundException('Employee not found');
     }
 
+    if (
+      currentUser &&
+      currentUser.id === employee.id &&
+      (currentUser.role?.authorityLevel ?? 0) < 100
+    ) {
+      throw new ForbiddenException('You cannot change your own role.');
+    }
+
     if (currentUser && employee.role) {
       this.validateAuthorityLevel(currentUser, employee.role.authorityLevel, 'change role of');
     }
@@ -292,6 +300,7 @@ export class EmployeesService {
     }
 
     employee.roleId = roleId;
+    employee.role = role;
     await this.employeeRepository.save(employee);
 
     return {
@@ -555,15 +564,29 @@ export class EmployeesService {
       this.validateAuthorityLevel(currentUser, employee.role.authorityLevel, 'modify');
     }
 
-    const targetRoleId = (dto as any).roleId;
-    if (targetRoleId && targetRoleId !== employee.roleId) {
+    const targetRoleId = dto.roleId;
+    if (targetRoleId) {
       const newRole = await this.roleRepository.findOne({
         where: { id: targetRoleId, tenantId, deletedAt: IsNull(), isActive: true },
       });
       if (!newRole) throw new NotFoundException('Role not found');
-      if (currentUser) {
-        this.validateAuthorityLevel(currentUser, newRole.authorityLevel, 'assign role of');
+
+      if (targetRoleId !== employee.roleId) {
+        if (
+          currentUser &&
+          currentUser.id === employee.id &&
+          (currentUser.role?.authorityLevel ?? 0) < 100
+        ) {
+          throw new ForbiddenException('You cannot change your own role.');
+        }
+
+        if (currentUser) {
+          this.validateAuthorityLevel(currentUser, newRole.authorityLevel, 'assign role of');
+        }
       }
+
+      employee.roleId = targetRoleId;
+      employee.role = newRole;
     }
 
     if (dto.email) {
