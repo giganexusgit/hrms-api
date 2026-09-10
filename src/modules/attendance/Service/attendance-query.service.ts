@@ -11,6 +11,8 @@ import { formatIST, todayIST } from '../../../utils/time.util';
 import { buildAttendanceCalendar } from '../helpers/attendance-calendar.helper';
 import { DataScopeService } from '../../../common/services/data-scope.service';
 import { TenantQueryService } from '../../../common/services/tenant-query.service';
+import { AttendanceValidationService } from './attendance-validation.service';
+import { Shift } from '../../shift/entities/shift.entity';
 
 @Injectable()
 export class AttendanceQueryService {
@@ -21,6 +23,7 @@ export class AttendanceQueryService {
     private readonly employeeRepo: Repository<Employee>,
     private readonly dataScopeService: DataScopeService,
     private readonly tenantQueryService: TenantQueryService,
+    private readonly validationService: AttendanceValidationService,
   ) {}
 
   async getMyAttendance(employeeId: string) {
@@ -32,10 +35,26 @@ export class AttendanceQueryService {
         deletedAt: IsNull(),
         tenantId,
       },
+      relations: {
+        shift: true,
+        branch: {
+          defaultShift: true,
+          organization: {
+            defaultShift: true,
+          },
+        },
+      },
     });
 
     if (!employee) {
       throw new NotFoundException('Employee not found');
+    }
+
+    let effectiveShift: Shift | null = null;
+    try {
+      effectiveShift = this.validationService.getEffectiveShift(employee);
+    } catch {
+      effectiveShift = null;
     }
 
     const data = await this.attendanceRepo.find({
@@ -56,6 +75,7 @@ export class AttendanceQueryService {
 
     return {
       data: data.map((item) => formatAttendanceResponse(item)),
+      shift: effectiveShift,
       total: data.length,
     };
   }

@@ -190,18 +190,15 @@ export class AttendanceValidationService {
         .second(0)
         .millisecond(0);
 
-      const isCrossMidnight = endHour < startHour;
+      const isCrossMidnight = shift.crossMidnight || endHour < startHour;
       if (isCrossMidnight) {
         if (dayjsIST(nowDate).hour() >= startHour) {
           shiftEndTime = shiftEndTime.add(1, 'day');
         }
       }
 
-      // If it's a cross-midnight shift and now is past midnight but before end time, the shift end time was probably 'today' while start was 'yesterday'.
-      // This is simplified. Proper cross midnight will be handled in service.
-
       const earlyLeaveThreshold = shiftEndTime.subtract(
-        shift.earlyLeaveGraceMinutes,
+        shift.earlyLeaveGraceMinutes || 0,
         'minute',
       );
 
