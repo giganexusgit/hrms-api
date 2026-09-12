@@ -254,6 +254,11 @@ export class AttendanceQueryService {
         checkIn: formatIST(item.checkIn),
         checkOut: formatIST(item.checkOut),
         workedHours: Number((item.workedMinutes / 60).toFixed(2)),
+        workStatus: item.workStatus,
+        totalBreakMinutes: item.totalBreakMinutes,
+        lastBreakStart: formatIST(item.lastBreakStart),
+        lastBreakEnd: formatIST(item.lastBreakEnd),
+        workedMinutes: item.workedMinutes,
       })),
       summary: {
         present: data.filter((a) => a.status === AttendanceStatus.PRESENT).length,

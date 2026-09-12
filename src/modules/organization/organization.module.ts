@@ -8,6 +8,7 @@ import { Branch } from './entities/branch.entity';
 import { OrganizationContact } from './entities/organization-contact.entity';
 import { OrganizationBankAccount } from './entities/organization-bank-account.entity';
 import { OrganizationDocument } from './entities/organization-document.entity';
+import { Employee } from '../employees/entities/employee.entity';
 
 import { OrganizationService } from './services/organization.service';
 import { OrganizationAddressService } from './services/organization-address.service';
@@ -30,6 +31,7 @@ import { OrganizationController } from './organization.controller';
       OrganizationContact,
       OrganizationBankAccount,
       OrganizationDocument,
+      Employee,
     ]),
   ],
   controllers: [OrganizationController],

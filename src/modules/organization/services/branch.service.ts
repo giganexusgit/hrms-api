@@ -5,8 +5,9 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { Branch } from '../entities/branch.entity';
+import { Employee } from '../../employees/entities/employee.entity';
 import { CreateBranchDto } from '../dto/create-branch.dto';
 import { UpdateBranchDto } from '../dto/update-branch.dto';
 import { OrganizationService } from './organization.service';
@@ -18,6 +19,8 @@ export class BranchService {
   constructor(
     @InjectRepository(Branch)
     private readonly branchRepo: Repository<Branch>,
+    @InjectRepository(Employee)
+    private readonly employeeRepo: Repository<Employee>,
     private readonly organizationService: OrganizationService,
     private readonly tenantQueryService: TenantQueryService,
     private readonly dataScopeService: DataScopeService,
@@ -120,5 +123,36 @@ export class BranchService {
     const branch = await this.branchRepo.findOne({ where: { id, tenantId } });
     if (!branch) throw new NotFoundException('Branch not found');
     return branch;
+  }
+
+  async delete(id: string, userId?: string) {
+    const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+    const branch = await this.branchRepo.findOne({ where: { id, tenantId } });
+    if (!branch) throw new NotFoundException('Branch not found');
+
+    if (branch.isHeadOffice) {
+      throw new BadRequestException(
+        'Cannot delete the Head Office branch. Please designate another branch as Head Office first.',
+      );
+    }
+
+    const employeeCount = await this.employeeRepo.count({
+      where: {
+        branch: { id },
+        tenantId,
+        deletedAt: IsNull(),
+      },
+    });
+
+    if (employeeCount > 0) {
+      throw new BadRequestException(
+        `Cannot delete branch '${branch.name}' because ${employeeCount} active employee(s) are currently assigned to it. Please reassign the employees first.`,
+      );
+    }
+
+    branch.deletedByUserId = userId;
+    await this.branchRepo.softRemove(branch);
+
+    return { message: 'Branch deleted successfully' };
   }
 }

@@ -79,7 +79,6 @@ export class AttendanceCronService {
           .leftJoinAndSelect('branch.defaultShift', 'branchShift')
           .leftJoinAndSelect('branch.organization', 'organization')
           .leftJoinAndSelect('organization.defaultShift', 'orgShift')
-          .setLock('pessimistic_write')
           .where('attendance.check_out IS NULL')
           .andWhere('attendance.check_in IS NOT NULL')
           .andWhere('attendance.tenantId = :currentTenantId', { currentTenantId })
@@ -96,9 +95,14 @@ export class AttendanceCronService {
         for (const attendance of records) {
           if (!attendance.employee) continue;
 
-          const shift = this.validationService.getEffectiveShift(
-            attendance.employee,
-          );
+          let shift;
+          try {
+            shift = this.validationService.getEffectiveShift(
+              attendance.employee,
+            );
+          } catch {
+            continue;
+          }
 
           let absoluteMaxTime: dayjs.Dayjs;
           let officialShiftEndTime: dayjs.Dayjs;
@@ -107,7 +111,7 @@ export class AttendanceCronService {
 
           if (shift.isFlexible) {
             officialShiftEndTime = dayjsIST(attendance.checkIn).add(
-              shift.standardWorkingMinutes,
+              shift.standardWorkingMinutes || 480,
               'minute',
             );
             absoluteMaxTime = officialShiftEndTime.add(
@@ -115,6 +119,7 @@ export class AttendanceCronService {
               'minute',
             );
           } else {
+            if (!shift.startTime || !shift.endTime) continue;
             const [endHour, endMinute] = shift.endTime.split(':').map(Number);
             const [startHour] = shift.startTime.split(':').map(Number);
             officialShiftEndTime = dayjsIST(attendance.date)
@@ -218,6 +223,7 @@ export class AttendanceCronService {
           employeeId: employee.id,
           date: today,
           status: AttendanceStatus.HOLIDAY,
+          tenantId: currentTenantId,
         });
       }
     });
@@ -315,6 +321,7 @@ export class AttendanceCronService {
           employeeId: employee.id,
           date: today,
           status: AttendanceStatus.WEEKEND,
+          tenantId: currentTenantId,
         });
       }
     });
@@ -322,7 +329,7 @@ export class AttendanceCronService {
 
   // =====================
   // AUTO ABSENT
-  // 11:00 PM
+  // Hourly Check
   // =====================
 
   @Cron('0 * * * *', {
@@ -418,19 +425,27 @@ export class AttendanceCronService {
           continue;
         }
 
-        const [startHour, startMinute] = shift.startTime.split(':').map(Number);
-        const shiftStartTime = dayjsIST(today)
-          .hour(startHour)
-          .minute(startMinute)
-          .second(0)
-          .millisecond(0);
-        const absoluteLatestCheckIn = shiftStartTime.add(
-          shift.latestCheckInMinutes,
-          'minute',
-        );
+        if (shift.isFlexible) {
+          // Flexible shifts: mark absent near end of day if no check-in occurred
+          if (now.hour() < 23) {
+            continue;
+          }
+        } else {
+          if (!shift.startTime) continue;
+          const [startHour, startMinute] = shift.startTime.split(':').map(Number);
+          const shiftStartTime = dayjsIST(today)
+            .hour(startHour)
+            .minute(startMinute)
+            .second(0)
+            .millisecond(0);
+          const absoluteLatestCheckIn = shiftStartTime.add(
+            shift.latestCheckInMinutes || 240,
+            'minute',
+          );
 
-        if (now.isBefore(absoluteLatestCheckIn)) {
-          continue;
+          if (now.isBefore(absoluteLatestCheckIn)) {
+            continue;
+          }
         }
 
         if (holiday) {
@@ -438,6 +453,7 @@ export class AttendanceCronService {
             employeeId: employee.id,
             date: today,
             status: AttendanceStatus.HOLIDAY,
+            tenantId: currentTenantId,
           });
           continue;
         }
@@ -447,6 +463,7 @@ export class AttendanceCronService {
             employeeId: employee.id,
             date: today,
             status: AttendanceStatus.WEEKEND,
+            tenantId: currentTenantId,
           });
           continue;
         }
@@ -456,6 +473,7 @@ export class AttendanceCronService {
           .where('leave.employee_id = :employeeId', { employeeId: employee.id })
           .andWhere('leave.status = :status', { status: LeaveStatusEnum.APPROVED })
           .andWhere('leave.start_date <= :today AND leave.end_date >= :today', { today })
+          .andWhere('leave.tenantId = :currentTenantId', { currentTenantId })
           .getOne();
 
         if (leave) {
@@ -463,6 +481,7 @@ export class AttendanceCronService {
             employeeId: employee.id,
             date: today,
             status: AttendanceStatus.LEAVE,
+            tenantId: currentTenantId,
           });
           continue;
         }
@@ -473,6 +492,7 @@ export class AttendanceCronService {
           status: AttendanceStatus.ABSENT,
           workedMinutes: 0,
           overtimeMinutes: 0,
+          tenantId: currentTenantId,
         });
       }
     });

@@ -263,6 +263,16 @@ export class OrganizationController {
     return this.branchService.update(id, updateDto, user?.id);
   }
 
+  @Delete('branch/:id')
+  @Permissions(PermissionEnum.ORGANIZATION_UPDATE)
+  @ApiOperation({ summary: 'Delete a branch' })
+  async deleteBranch(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.branchService.delete(id, user?.id);
+  }
+
   @Get('branch/:id/contact')
   @Permissions(PermissionEnum.ORGANIZATION_READ)
   @ApiOperation({ summary: 'Get all contacts for a specific branch' })

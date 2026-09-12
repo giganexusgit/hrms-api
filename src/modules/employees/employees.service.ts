@@ -380,6 +380,12 @@ export class EmployeesService {
         tenantId: true,
         email: true,
         employeeCode: true,
+        firstName: true,
+        lastName: true,
+        middleName: true,
+        displayName: true,
+        profilePhoto: true,
+        mobile: true,
         isActive: true,
         roleId: true,
         branchId: true,
@@ -757,8 +763,80 @@ export class EmployeesService {
       throw new NotFoundException('Employee not found');
     }
 
-    const canvas = createCanvas(600, 950);
+    const canvasWidth = 600;
+    const canvasHeight = 960;
+    const canvas = createCanvas(canvasWidth, canvasHeight);
     const ctx = canvas.getContext('2d');
+
+    // Helper: Rounded Rectangle
+    const drawRoundedRect = (
+      x: number,
+      y: number,
+      w: number,
+      h: number,
+      r: number,
+    ) => {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    };
+
+    // Helper: Aspect-Fill Image Draw
+    const drawImageCover = (
+      img: any,
+      x: number,
+      y: number,
+      w: number,
+      h: number,
+    ) => {
+      const imgRatio = img.width / img.height;
+      const targetRatio = w / h;
+      let sWidth = img.width;
+      let sHeight = img.height;
+      let sx = 0;
+      let sy = 0;
+
+      if (imgRatio > targetRatio) {
+        sWidth = img.height * targetRatio;
+        sx = (img.width - sWidth) / 2;
+      } else {
+        sHeight = img.width / targetRatio;
+        sy = (img.height - sHeight) / 2;
+      }
+
+      ctx.drawImage(img, sx, sy, sWidth, sHeight, x, y, w, h);
+    };
+
+    // Helper: Resolve image path safely
+    const resolveLocalPath = (filePath?: string | null): string | null => {
+      if (!filePath) return null;
+      if (
+        filePath.startsWith('http://') ||
+        filePath.startsWith('https://') ||
+        filePath.startsWith('data:')
+      ) {
+        return filePath;
+      }
+      const clean = filePath.replace(/^[/\\]+/, '');
+      const possiblePaths = [
+        path.resolve(process.cwd(), clean),
+        path.resolve(process.cwd(), 'uploads', clean.replace(/^uploads[/\\]+/, '')),
+        path.resolve(__dirname, '../../..', clean),
+        path.resolve(__dirname, '../../../../uploads', clean.replace(/^uploads[/\\]+/, '')),
+      ];
+      for (const p of possiblePaths) {
+        if (fs.existsSync(p)) return p;
+      }
+      return path.resolve(process.cwd(), clean);
+    };
 
     let orgName = employee.branch?.organization?.name;
     let orgLogoUrl = employee.branch?.organization?.logoUrl;
@@ -772,148 +850,351 @@ export class EmployeesService {
         orgName = org.name;
         orgLogoUrl = org.logoUrl;
       } else {
-        orgName = 'GIGA SYSTEM';
+        orgName = 'GigaNexus';
       }
     }
 
-    // BACKGROUND
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, 600, 950);
+    // 1. CARD BASE CONTAINER (Rounded Card)
+    ctx.save();
+    drawRoundedRect(0, 0, canvasWidth, canvasHeight, 28);
+    ctx.clip();
 
-    // HEADER
-    ctx.fillStyle = '#1E40AF';
-    ctx.fillRect(0, 0, 600, 200);
+    // Clean white background
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'center';
+    // 2. MODERN TOP HEADER (Rich Deep Gradient)
+    const headerHeight = 220;
+    const headerGrad = ctx.createLinearGradient(0, 0, canvasWidth, headerHeight);
+    headerGrad.addColorStop(0, '#3B0764'); // Deep Purple
+    headerGrad.addColorStop(0.4, '#6B21A8'); // Purple 800
+    headerGrad.addColorStop(1, '#9333EA'); // Purple 600
 
+    ctx.fillStyle = headerGrad;
+    ctx.fillRect(0, 0, canvasWidth, headerHeight);
+
+    // Background modern angled wave / watermark accent
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.beginPath();
+    ctx.arc(550, 40, 180, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(50, 190, 140, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Lanyard slot cutout at top center
+    ctx.fillStyle = '#1E1B4B';
+    drawRoundedRect(250, 16, 100, 12, 6);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.lineWidth = 1.5;
+    drawRoundedRect(250, 16, 100, 12, 6);
+    ctx.stroke();
+
+    // Header Branding & Org Info
+    let drewLogo = false;
     if (orgLogoUrl) {
-      try {
-        const logoPath = path.join(process.cwd(), orgLogoUrl);
-        const logoImage = await loadImage(logoPath);
+      const resolvedLogo = resolveLocalPath(orgLogoUrl);
+      if (resolvedLogo) {
+        try {
+          const logoImage = await loadImage(resolvedLogo);
+          const maxLogoW = 160;
+          const maxLogoH = 50;
+          const ratio = Math.min(
+            maxLogoW / logoImage.width,
+            maxLogoH / logoImage.height,
+          );
+          const logoW = logoImage.width * ratio;
+          const logoH = logoImage.height * ratio;
+          const logoX = (canvasWidth - logoW) / 2;
+          const logoY = 42;
 
-        const maxLogoWidth = 200;
-        const maxLogoHeight = 90;
-        const ratio = Math.min(
-          maxLogoWidth / logoImage.width,
-          maxLogoHeight / logoImage.height,
-        );
+          ctx.drawImage(logoImage, logoX, logoY, logoW, logoH);
+          drewLogo = true;
 
-        const logoWidth = logoImage.width * ratio;
-        const logoHeight = logoImage.height * ratio;
-        const logoX = (600 - logoWidth) / 2;
-        const logoY = 30;
-
-        ctx.drawImage(logoImage, logoX, logoY, logoWidth, logoHeight);
-
-        ctx.font = 'bold 26px Arial';
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(orgName.toUpperCase(), 300, logoY + logoHeight + 40);
-      } catch (err) {
-        ctx.font = 'bold 36px Arial';
-        ctx.fillText(orgName.toUpperCase(), 300, 115);
+          // Org Name text below logo
+          ctx.fillStyle = '#FFFFFF';
+          ctx.font = 'bold 18px "Segoe UI", Arial, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(orgName.toUpperCase(), 300, logoY + logoH + 24);
+        } catch (e) {
+          drewLogo = false;
+        }
       }
-    } else {
-      ctx.font = 'bold 36px Arial';
-      ctx.fillText(orgName.toUpperCase(), 300, 115);
     }
 
-    // PROFILE PHOTO (CIRCULAR)
+    if (!drewLogo) {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 24px "Segoe UI", Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(orgName.toUpperCase(), 300, 68);
+    }
+
+    // Subtitle Badge
+    ctx.fillStyle = 'rgba(243, 232, 255, 0.9)';
+    ctx.font = '600 11px "Segoe UI", Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('OFFICIAL DIGITAL IDENTIFICATION', 300, 108);
+
+    // Accent line between header & body
+    ctx.strokeStyle = '#E9D5FF';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, headerHeight);
+    ctx.lineTo(canvasWidth, headerHeight);
+    ctx.stroke();
+
+    // 3. EMPLOYEE PHOTO FRAME (Concentric Rings & Rounded Clip)
+    const photoCenterX = 300;
+    const photoCenterY = 220;
+    const photoRadius = 80;
+
+    // Outer Glow / Ring
     ctx.save();
     ctx.beginPath();
-    ctx.arc(300, 310, 110, 0, Math.PI * 2, true);
+    ctx.arc(photoCenterX, photoCenterY, photoRadius + 6, 0, Math.PI * 2);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.shadowColor = 'rgba(147, 51, 234, 0.35)';
+    ctx.shadowBlur = 16;
+    ctx.shadowOffsetY = 4;
+    ctx.fill();
+    ctx.restore();
+
+    // Purple Accent Ring
+    ctx.beginPath();
+    ctx.arc(photoCenterX, photoCenterY, photoRadius + 3, 0, Math.PI * 2);
+    ctx.strokeStyle = '#9333EA';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // Circular Photo
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(photoCenterX, photoCenterY, photoRadius, 0, Math.PI * 2);
     ctx.closePath();
     ctx.clip();
 
+    let drewPhoto = false;
     if (employee.profilePhoto) {
-      try {
-        const imagePath = path.join(process.cwd(), employee.profilePhoto);
-        const profileImage = await loadImage(imagePath);
-        ctx.drawImage(profileImage, 190, 200, 220, 220);
-      } catch (err) {
-        ctx.fillStyle = '#CBD5E1';
-        ctx.fillRect(190, 200, 220, 220);
-        ctx.fillStyle = '#64748B';
-        ctx.font = 'bold 80px Arial';
-        ctx.fillText(employee.firstName.charAt(0).toUpperCase(), 300, 340);
+      const resolvedPhoto = resolveLocalPath(employee.profilePhoto);
+      if (resolvedPhoto) {
+        try {
+          const profileImage = await loadImage(resolvedPhoto);
+          drawImageCover(
+            profileImage,
+            photoCenterX - photoRadius,
+            photoCenterY - photoRadius,
+            photoRadius * 2,
+            photoRadius * 2,
+          );
+          drewPhoto = true;
+        } catch (err) {
+          drewPhoto = false;
+        }
       }
-    } else {
-      ctx.fillStyle = '#CBD5E1';
-      ctx.fillRect(190, 200, 220, 220);
-      ctx.fillStyle = '#64748B';
-      ctx.font = 'bold 80px Arial';
-      ctx.fillText(employee.firstName.charAt(0).toUpperCase(), 300, 340);
+    }
+
+    if (!drewPhoto) {
+      // Fallback Gradient Initials
+      const avatarGrad = ctx.createLinearGradient(
+        photoCenterX - photoRadius,
+        photoCenterY - photoRadius,
+        photoCenterX + photoRadius,
+        photoCenterY + photoRadius,
+      );
+      avatarGrad.addColorStop(0, '#C084FC');
+      avatarGrad.addColorStop(1, '#7E22CE');
+      ctx.fillStyle = avatarGrad;
+      ctx.fillRect(
+        photoCenterX - photoRadius,
+        photoCenterY - photoRadius,
+        photoRadius * 2,
+        photoRadius * 2,
+      );
+
+      const fInitial = (employee.firstName || 'E').charAt(0).toUpperCase();
+      const lInitial = (employee.lastName || '').charAt(0).toUpperCase();
+      const initials = `${fInitial}${lInitial}`;
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 56px "Segoe UI", Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(initials, photoCenterX, photoCenterY);
     }
     ctx.restore();
 
-    // CIRCULAR BORDER
-    ctx.beginPath();
-    ctx.arc(300, 310, 110, 0, Math.PI * 2, true);
-    ctx.lineWidth = 8;
-    ctx.strokeStyle = '#1E40AF';
+    // 4. EMPLOYEE IDENTITY (Name & Designation Badge)
+    const displayName = (
+      employee.displayName ||
+      `${employee.firstName || ''} ${employee.lastName || ''}`
+    ).trim();
+
+    ctx.fillStyle = '#0F172A';
+    ctx.font = 'bold 24px "Segoe UI", Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(displayName, 300, 335);
+
+    // Designation Pill Badge
+    const desigText = (employee.designation?.name || 'EMPLOYEE').toUpperCase();
+    ctx.font = 'bold 12px "Segoe UI", Arial, sans-serif';
+    const pillWidth = Math.min(Math.max(ctx.measureText(desigText).width + 36, 130), 400);
+    const pillHeight = 28;
+    const pillX = 300 - pillWidth / 2;
+    const pillY = 348;
+
+    ctx.fillStyle = '#F3E8FF';
+    drawRoundedRect(pillX, pillY, pillWidth, pillHeight, 14);
+    ctx.fill();
+    ctx.strokeStyle = '#D8B4FE';
+    ctx.lineWidth = 1;
+    drawRoundedRect(pillX, pillY, pillWidth, pillHeight, 14);
     ctx.stroke();
 
-    // NAME & DESIGNATION
-    const fullName = `${employee.firstName} ${employee.lastName}`.trim();
-    ctx.fillStyle = '#1E293B';
-    ctx.font = 'bold 32px Arial';
-    ctx.fillText(fullName, 300, 460);
+    ctx.fillStyle = '#7E22CE';
+    ctx.textAlign = 'center';
+    ctx.fillText(desigText, 300, pillY + 18);
 
-    ctx.fillStyle = '#2563EB';
-    ctx.font = 'bold 22px Arial';
-    ctx.fillText((employee.designation?.name || 'Employee').toUpperCase(), 300, 495);
+    // 5. STRUCTURED DETAILS CARD
+    const cardX = 40;
+    const cardY = 395;
+    const cardW = 520;
+    const cardH = 290;
 
-    // DETAILS LIST
-    const startY = 550;
-    const lineHeight = 45;
-    ctx.textAlign = 'left';
-    ctx.font = '18px Arial';
+    ctx.fillStyle = '#F8FAFC';
+    drawRoundedRect(cardX, cardY, cardW, cardH, 18);
+    ctx.fill();
+
+    ctx.strokeStyle = '#E2E8F0';
+    ctx.lineWidth = 1.2;
+    drawRoundedRect(cardX, cardY, cardW, cardH, 18);
+    ctx.stroke();
 
     const details = [
-      { label: 'Employee ID', value: employee.employeeCode },
-      { label: 'Department', value: employee.department?.name || 'N/A' },
-      { label: 'Branch', value: employee.branch?.name || 'N/A' },
-      { label: 'Mobile', value: employee.mobile || 'N/A' },
+      { label: 'Employee ID', value: employee.employeeCode || 'N/A', isBadge: true },
+      { label: 'Department', value: employee.department?.name || 'General' },
+      { label: 'Branch', value: employee.branch?.name || 'Headquarters' },
+      { label: 'Mobile Phone', value: employee.mobile || 'N/A' },
+      { label: 'Card Status', value: employee.isActive ? 'ACTIVE' : 'INACTIVE', isStatus: true },
     ];
 
-    details.forEach((item, index) => {
-      const currentY = startY + index * lineHeight;
-      ctx.fillStyle = '#64748B';
-      ctx.fillText(`${item.label}:`, 100, currentY);
+    const rowStartY = cardY + 36;
+    const rowGap = 50;
 
-      ctx.fillStyle = '#0F172A';
-      ctx.font = 'bold 18px Arial';
-      ctx.fillText(item.value, 260, currentY);
-      ctx.font = '18px Arial';
+    details.forEach((item, idx) => {
+      const currentY = rowStartY + idx * rowGap;
+
+      // Divider line between rows
+      if (idx > 0) {
+        ctx.strokeStyle = '#F1F5F9';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cardX + 24, currentY - 24);
+        ctx.lineTo(cardX + cardW - 24, currentY - 24);
+        ctx.stroke();
+      }
+
+      // Label
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#64748B';
+      ctx.font = '600 13px "Segoe UI", Arial, sans-serif';
+      ctx.fillText(item.label.toUpperCase(), cardX + 28, currentY);
+
+      // Value
+      ctx.textAlign = 'right';
+      if (item.isStatus) {
+        // Status Dot + Text
+        const isAct = employee.isActive;
+        ctx.fillStyle = isAct ? '#16A34A' : '#DC2626';
+        ctx.font = 'bold 13px "Segoe UI", Arial, sans-serif';
+        ctx.fillText(item.value, cardX + cardW - 28, currentY);
+
+        ctx.beginPath();
+        ctx.arc(cardX + cardW - 28 - ctx.measureText(item.value).width - 10, currentY - 4, 4, 0, Math.PI * 2);
+        ctx.fillStyle = isAct ? '#22C55E' : '#EF4444';
+        ctx.fill();
+      } else if (item.isBadge) {
+        ctx.fillStyle = '#0F172A';
+        ctx.font = 'bold 15px "Segoe UI", Arial, sans-serif';
+        ctx.fillText(item.value, cardX + cardW - 28, currentY);
+      } else {
+        ctx.fillStyle = '#1E293B';
+        ctx.font = '600 14px "Segoe UI", Arial, sans-serif';
+        ctx.fillText(item.value, cardX + cardW - 28, currentY);
+      }
     });
 
-    // QR CODE GENERATION
+    // 6. QR CODE & VERIFICATION SECTION
+    const qrSectionY = 705;
     try {
       const qrData = JSON.stringify({
         id: employee.id,
         code: employee.employeeCode,
-        name: fullName,
+        name: displayName,
         email: employee.email,
+        tenantId: employee.tenantId,
+        verified: true,
       });
 
       const qrDataUrl = await QRCode.toDataURL(qrData, {
-        width: 120,
+        width: 130,
         margin: 1,
+        color: {
+          dark: '#0F172A',
+          light: '#FFFFFF',
+        },
       });
       const qrImage = await loadImage(qrDataUrl);
-      ctx.drawImage(qrImage, 240, 740, 120, 120);
+
+      // QR Box Container with soft border
+      ctx.fillStyle = '#FFFFFF';
+      drawRoundedRect(235, qrSectionY, 130, 130, 14);
+      ctx.fill();
+      ctx.strokeStyle = '#E2E8F0';
+      ctx.lineWidth = 1;
+      drawRoundedRect(235, qrSectionY, 130, 130, 14);
+      ctx.stroke();
+
+      ctx.drawImage(qrImage, 240, qrSectionY + 5, 120, 120);
+
+      // Micro Verification Text
+      ctx.fillStyle = '#94A3B8';
+      ctx.font = '600 10px "Segoe UI", Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('SCAN TO VERIFY CREDENTIALS', 300, qrSectionY + 150);
     } catch (err) {
       // Fallback if QR fails
     }
 
-    // FOOTER
-    ctx.fillStyle = '#F1F5F9';
-    ctx.fillRect(0, 880, 600, 70);
+    // 7. FOOTER SECURITY BAR
+    ctx.fillStyle = '#F8FAFC';
+    ctx.fillRect(0, 890, canvasWidth, 70);
+
+    ctx.strokeStyle = '#E2E8F0';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, 890);
+    ctx.lineTo(canvasWidth, 890);
+    ctx.stroke();
 
     ctx.fillStyle = '#64748B';
-    ctx.font = '14px Arial';
+    ctx.font = '500 11.5px "Segoe UI", Arial, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('If found, please return to company head office.', 300, 920);
+    ctx.fillText(
+      'Official Property of Company • If found, please return to HR Office',
+      300,
+      928,
+    );
+
+    // Card Outer Border
+    ctx.strokeStyle = '#CBD5E1';
+    ctx.lineWidth = 2;
+    drawRoundedRect(1, 1, canvasWidth - 2, canvasHeight - 2, 28);
+    ctx.stroke();
+    ctx.restore();
 
     res.setHeader('Content-Type', 'image/png');
     res.setHeader(
