@@ -20,6 +20,8 @@ import { RefreshToken } from '../auth/entities/refresh-token.entity';
 import dayjs from 'dayjs';
 import { TenantQueryService } from '../../common/services/tenant-query.service';
 import { DataScopeService } from '../../common/services/data-scope.service';
+import { NotificationService } from '../notification/notification.service';
+import { NotificationType } from '../../common/enums/NotificationType.enum';
 
 @Injectable()
 export class ResignationsService {
@@ -34,6 +36,7 @@ export class ResignationsService {
     private readonly dataSource: DataSource,
     private readonly tenantQueryService: TenantQueryService,
     private readonly dataScopeService: DataScopeService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async create(
@@ -109,6 +112,15 @@ export class ResignationsService {
     });
 
     const savedResignation = await this.resignationRepository.save(resignation);
+
+    // Notify employee confirming submission
+    await this.notificationService.createNotification({
+      employeeId: employee.id,
+      type: NotificationType.GENERAL,
+      title: 'Resignation Submitted',
+      message: `Your resignation request has been received and is currently under review.`,
+      referenceId: savedResignation.id,
+    });
 
     if (currentUserId) {
       this.activityLogService.logAction({
@@ -243,6 +255,15 @@ export class ResignationsService {
 
       await queryRunner.commitTransaction();
 
+      // Notify employee on approval
+      await this.notificationService.createNotification({
+        employeeId: resignation.employeeId,
+        type: NotificationType.GENERAL,
+        title: 'Resignation Request Approved',
+        message: `Your resignation request has been approved. Approved last working date: ${savedResignation.approvedLastWorkingDate ? dayjs(savedResignation.approvedLastWorkingDate).format('YYYY-MM-DD') : 'N/A'}.`,
+        referenceId: savedResignation.id,
+      });
+
       if (currentUserId) {
         this.activityLogService.logAction({
           userId: currentUserId,
@@ -320,6 +341,15 @@ export class ResignationsService {
       }
 
       await queryRunner.commitTransaction();
+
+      // Notify employee on exit completion
+      await this.notificationService.createNotification({
+        employeeId: resignation.employeeId,
+        type: NotificationType.GENERAL,
+        title: 'Exit Completed',
+        message: `Your exit process has been finalized. Thank you for your contributions.`,
+        referenceId: savedResignation.id,
+      });
 
       if (currentUserId) {
         this.activityLogService.logAction({

@@ -15,6 +15,8 @@ import { ActivityAction } from '../activity-log/enums/activity-action.enum';
 import { SalaryStructure } from '../salary-structure/entities/salary-structure.entity';
 import { TenantQueryService } from "../../common/services/tenant-query.service";
 import { DataScopeService } from '../../common/services/data-scope.service';
+import { NotificationService } from '../notification/notification.service';
+import { NotificationType } from '../../common/enums/NotificationType.enum';
 
 @Injectable()
 export class CareerMovementsService {
@@ -26,7 +28,8 @@ export class CareerMovementsService {
     private readonly activityLogService: ActivityLogService,
     private readonly dataSource: DataSource, 
     private readonly tenantQueryService: TenantQueryService,
-    private readonly dataScopeService: DataScopeService
+    private readonly dataScopeService: DataScopeService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async create(
@@ -294,6 +297,15 @@ export class CareerMovementsService {
       );
 
       await queryRunner.commitTransaction();
+
+      // Notify employee on career movement execution
+      await this.notificationService.createNotification({
+        employeeId: movement.employeeId,
+        type: NotificationType.ANNOUNCEMENT,
+        title: 'Career Movement Update',
+        message: `Your career movement (${movement.movementType}) has been approved and successfully executed.`,
+        referenceId: savedMovement.id,
+      });
 
       if (currentUserId) {
         await this.activityLogService.logAction({

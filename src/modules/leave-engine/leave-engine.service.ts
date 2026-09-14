@@ -13,6 +13,8 @@ import { Employee } from '../employees/entities/employee.entity';
 import { TenantQueryService } from "../../common/services/tenant-query.service";
 import { DataScopeService } from '../../common/services/data-scope.service';
 import { TenantExecutionService } from '../../common/services/tenant-execution.service';
+import { NotificationService } from '../notification/notification.service';
+import { NotificationType } from '../../common/enums/NotificationType.enum';
 
 @Injectable()
 export class LeaveEngineService {
@@ -29,6 +31,7 @@ export class LeaveEngineService {
     private readonly tenantQueryService: TenantQueryService,
     private readonly dataScopeService: DataScopeService,
     private readonly tenantExecutionService: TenantExecutionService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   // -------------------------------------------------------------
@@ -175,6 +178,13 @@ export class LeaveEngineService {
           days: policy.accrualRate,
           remarks: 'Monthly Accrual',
         });
+
+        await this.notificationService.createNotification({
+          employeeId: empId,
+          type: NotificationType.LEAVE,
+          title: 'Leave Balance Credited',
+          message: `Your monthly leave balance has been credited with ${policy.accrualRate} day(s).`,
+        });
       }
     }
   }
@@ -203,6 +213,13 @@ export class LeaveEngineService {
             transactionType: LeaveTransactionType.ACCRUAL,
             days: policy.annualQuota,
             remarks: 'Automated Yearly Accrual',
+          });
+
+          await this.notificationService.createNotification({
+            employeeId: empId,
+            type: NotificationType.LEAVE,
+            title: 'Annual Leave Quota Credited',
+            message: `Your annual leave quota of ${policy.annualQuota} day(s) has been credited.`,
           });
         }
       }

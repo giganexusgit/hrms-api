@@ -6,27 +6,33 @@ import {
 
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { Between, Repository } from 'typeorm';
+import { Between, Repository, IsNull } from 'typeorm';
 
 import { Holiday } from './entities/holiday.entity';
-
+import { Employee } from '../employees/entities/employee.entity';
 import { CreateHolidayDto } from './dto/create-holiday.dto';
 import { UpdateHolidayDto } from './dto/update-holiday.dto';
 import { TenantQueryService } from "../../common/services/tenant-query.service";
+import { NotificationService } from '../notification/notification.service';
+import { NotificationType } from '../../common/enums/NotificationType.enum';
 
 @Injectable()
 export class HolidayService {
   constructor(
     @InjectRepository(Holiday)
-    private readonly holidayRepo: Repository<Holiday>, private readonly tenantQueryService: TenantQueryService
+    private readonly holidayRepo: Repository<Holiday>,
+    @InjectRepository(Employee)
+    private readonly employeeRepo: Repository<Employee>,
+    private readonly tenantQueryService: TenantQueryService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async create(dto: CreateHolidayDto) {
     const existing = await this.holidayRepo.findOne({
       where: {
         date: dto.date,
-          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
-    },
+        tenantId: this.tenantQueryService.getTenantWhereClause().tenantId,
+      },
     });
 
     if (existing) {
@@ -35,19 +41,40 @@ export class HolidayService {
 
     const { tenantId } = this.tenantQueryService.getTenantWhereClause();
 
-    return this.holidayRepo.save({
+    const savedHoliday = await this.holidayRepo.save({
       name: dto.name.trim(),
-
       date: dto.date,
-
       type: dto.type,
-
       isPaid: dto.isPaid,
-
       description: dto.description?.trim() || null,
-
       tenantId,
     });
+
+    // Broadcast new holiday announcement to active employees
+    try {
+      const employees = await this.employeeRepo.find({
+        where: {
+          isActive: true,
+          deletedAt: IsNull(),
+          tenantId,
+        },
+        select: { id: true },
+      });
+
+      for (const emp of employees) {
+        await this.notificationService.createNotification({
+          employeeId: emp.id,
+          type: NotificationType.HOLIDAY,
+          title: 'Upcoming Holiday Added',
+          message: `A new holiday "${savedHoliday.name}" has been scheduled for ${savedHoliday.date}.`,
+          referenceId: savedHoliday.id,
+        });
+      }
+    } catch (e) {
+      // Non-blocking notification
+    }
+
+    return savedHoliday;
   }
 
   async findAll(query: any) {

@@ -14,17 +14,21 @@ export class NotificationPreferenceService {
     private preferenceRepo: Repository<NotificationPreference>, private readonly tenantQueryService: TenantQueryService
   ) {}
   async getPreferences(employee: any) {
+    const tenantId = employee.tenantId || this.tenantQueryService.getTenantWhereClause()?.tenantId;
     let preference = await this.preferenceRepo.findOne({
       where: {
         employeeId: employee.id,
-          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
-    },
+        ...(tenantId ? { tenantId } : {}),
+      },
     });
 
     if (!preference) {
-      preference = await this.preferenceRepo.save({
-        employeeId: employee.id,
-      });
+      preference = await this.preferenceRepo.save(
+        this.preferenceRepo.create({
+          employeeId: employee.id,
+          ...(tenantId ? { tenantId } : {}),
+        }),
+      );
     }
 
     return preference;
@@ -32,19 +36,20 @@ export class NotificationPreferenceService {
 
   async updatePreferences(
     employee: any,
-
     dto: UpdateNotificationPreferenceDto,
   ) {
+    const tenantId = employee.tenantId || this.tenantQueryService.getTenantWhereClause()?.tenantId;
     let preference = await this.preferenceRepo.findOne({
       where: {
         employeeId: employee.id,
-          tenantId: this.tenantQueryService.getTenantWhereClause().tenantId
-    },
+        ...(tenantId ? { tenantId } : {}),
+      },
     });
 
     if (!preference) {
       preference = this.preferenceRepo.create({
         employeeId: employee.id,
+        ...(tenantId ? { tenantId } : {}),
       });
     }
 

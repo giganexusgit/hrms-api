@@ -34,6 +34,8 @@ import {
   UpdateCourseMaterialDto,
 } from './dto/update-training.dto';
 import { TenantQueryService } from "../../common/services/tenant-query.service";
+import { NotificationService } from '../notification/notification.service';
+import { NotificationType } from '../../common/enums/NotificationType.enum';
 
 @Injectable()
 export class TrainingService {
@@ -60,7 +62,9 @@ export class TrainingService {
     private attemptRepo: Repository<AssessmentAttempt>,
     @InjectRepository(Employee) private employeeRepo: Repository<Employee>,
     @InjectRepository(Department)
-    private departmentRepo: Repository<Department>, private readonly tenantQueryService: TenantQueryService
+    private departmentRepo: Repository<Department>, 
+    private readonly tenantQueryService: TenantQueryService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   // =====================
@@ -280,6 +284,16 @@ export class TrainingService {
       );
 
     await this.assignmentRepo.save(newAssignments);
+
+    for (const assignment of newAssignments) {
+      await this.notificationService.createNotification({
+        employeeId: assignment.employeeId,
+        type: NotificationType.TRAINING,
+        title: 'New Training Assigned',
+        message: `You have been assigned to the course: "${course.title}".`,
+        referenceId: course.id,
+      });
+    }
 
     // Give them access to the first module by default
     const firstModule = course.modules.sort(

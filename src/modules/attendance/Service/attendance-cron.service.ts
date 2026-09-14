@@ -165,6 +165,14 @@ export class AttendanceCronService {
             attendance.workStatus = EmployeeWorkStatus.NOT_WORKING;
 
             await manager.save(attendance);
+
+            await this.notificationService.createNotification({
+              employeeId: attendance.employee.id,
+              type: NotificationType.ATTENDANCE,
+              title: 'Auto Check-Out',
+              message: `You were automatically checked out for ${attendance.date} as the shift duration ended.`,
+              referenceId: attendance.id,
+            });
           }
         }
       });
@@ -224,6 +232,14 @@ export class AttendanceCronService {
           date: today,
           status: AttendanceStatus.HOLIDAY,
           tenantId: currentTenantId,
+        });
+
+        await this.notificationService.createNotification({
+          employeeId: employee.id,
+          type: NotificationType.HOLIDAY,
+          title: 'Holiday Greetings',
+          message: `Today is a holiday: ${holiday.name || 'Holiday'}. Enjoy your day off!`,
+          referenceId: holiday.id,
         });
       }
     });
@@ -322,6 +338,13 @@ export class AttendanceCronService {
           date: today,
           status: AttendanceStatus.WEEKEND,
           tenantId: currentTenantId,
+        });
+
+        await this.notificationService.createNotification({
+          employeeId: employee.id,
+          type: NotificationType.ATTENDANCE,
+          title: 'Weekend Greetings',
+          message: 'Today is a weekend! Have a great and relaxing day.',
         });
       }
     });
@@ -494,6 +517,103 @@ export class AttendanceCronService {
           overtimeMinutes: 0,
           tenantId: currentTenantId,
         });
+
+        await this.notificationService.createNotification({
+          employeeId: employee.id,
+          type: NotificationType.ATTENDANCE,
+          title: 'Absent Alert',
+          message: `You were marked absent for ${today}. If this was a mistake, please submit an attendance correction request.`,
+        });
+      }
+    });
+  }
+
+  // =====================
+  // ADVANCE HOLIDAY & WEEKEND REMINDER
+  // 8:00 PM IST DAILY
+  // =====================
+
+  @Cron('0 20 * * *', {
+    timeZone: 'Asia/Kolkata',
+  })
+  async notifyUpcomingHolidayAndWeekend() {
+    await this.tenantExecutionService.forEachActiveTenant('Upcoming Holiday/Weekend Alert', async () => {
+      const tomorrow = nowIST().add(1, 'day');
+      const tomorrowStr = tomorrow.format('YYYY-MM-DD');
+      const currentTenantId = this.tenantQueryService.getTenantWhereClause().tenantId;
+
+      const holiday = await this.holidayRepo.findOne({
+        where: {
+          date: tomorrowStr,
+          tenantId: currentTenantId,
+        },
+      });
+
+      const dayMap = {
+        0: WeekDayEnum.SUNDAY,
+        1: WeekDayEnum.MONDAY,
+        2: WeekDayEnum.TUESDAY,
+        3: WeekDayEnum.WEDNESDAY,
+        4: WeekDayEnum.THURSDAY,
+        5: WeekDayEnum.FRIDAY,
+        6: WeekDayEnum.SATURDAY,
+      };
+
+      const tomorrowDay = dayMap[tomorrow.day()];
+      const weekOfMonth = Math.ceil(tomorrow.date() / 7);
+      const weekMap = {
+        1: WeekNumberEnum.FIRST,
+        2: WeekNumberEnum.SECOND,
+        3: WeekNumberEnum.THIRD,
+        4: WeekNumberEnum.FOURTH,
+        5: WeekNumberEnum.FIFTH,
+      };
+
+      const weekendRule = await this.weekendRepo.findOne({
+        where: [
+          {
+            day: tomorrowDay,
+            weekNumber: WeekNumberEnum.ALL,
+            isOff: true,
+            tenantId: currentTenantId,
+          },
+          {
+            day: tomorrowDay,
+            weekNumber: weekMap[weekOfMonth],
+            isOff: true,
+            tenantId: currentTenantId,
+          },
+        ],
+      });
+
+      if (!holiday && !weekendRule) return;
+
+      const employees = await this.employeeRepo.find({
+        where: {
+          isActive: true,
+          deletedAt: IsNull(),
+          tenantId: currentTenantId,
+        },
+        select: { id: true },
+      });
+
+      for (const employee of employees) {
+        if (holiday) {
+          await this.notificationService.createNotification({
+            employeeId: employee.id,
+            type: NotificationType.HOLIDAY,
+            title: 'Upcoming Holiday',
+            message: `Tomorrow is a holiday: ${holiday.name || 'Holiday'}. Enjoy your day off!`,
+            referenceId: holiday.id,
+          });
+        } else if (weekendRule) {
+          await this.notificationService.createNotification({
+            employeeId: employee.id,
+            type: NotificationType.ATTENDANCE,
+            title: 'Upcoming Weekend',
+            message: `Tomorrow is a weekend! Have a great and relaxing time.`,
+          });
+        }
       }
     });
   }

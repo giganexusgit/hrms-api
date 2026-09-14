@@ -16,6 +16,7 @@ import { ModuleProgress } from './entities/module-progress.entity';
 import { AssessmentAttempt } from './entities/assessment-attempt.entity';
 import { Employee } from '../employees/entities/employee.entity';
 import { Department } from '../departments/entities/department.entity';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { Department } from '../departments/entities/department.entity';
       Employee,
       Department,
     ]),
+    NotificationModule,
   ],
   controllers: [TrainingController, HrTrainingController],
   providers: [TrainingService],

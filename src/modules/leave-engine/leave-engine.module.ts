@@ -6,6 +6,7 @@ import { LeaveBalance } from '../leave-balance/entities/leave-balance.entity';
 import { LeavePolicy } from '../leave-policy/entities/leave-policy.entity';
 import { Employee } from '../employees/entities/employee.entity';
 import { ScheduleModule } from '@nestjs/schedule';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ScheduleModule } from '@nestjs/schedule';
       Employee,
     ]),
     ScheduleModule.forRoot(),
+    NotificationModule,
   ],
   providers: [LeaveEngineService],
   exports: [LeaveEngineService],

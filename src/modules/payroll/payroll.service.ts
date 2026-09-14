@@ -718,6 +718,19 @@ export class PayrollService {
 
     await this.payrollRepo.save(payroll);
 
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+
+    await this.notificationService.createNotification({
+      employeeId: payroll.employeeId,
+      type: NotificationType.PAYROLL,
+      title: 'Salary Disbursed',
+      message: `Your salary for ${monthNames[payroll.month - 1]} ${payroll.year} has been disbursed and marked as paid.`,
+      referenceId: payroll.id,
+    });
+
     return payroll;
   }
 
@@ -742,6 +755,21 @@ export class PayrollService {
     });
 
     await this.payrollRepo.save(payrolls);
+
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+
+    for (const p of payrolls) {
+      await this.notificationService.createNotification({
+        employeeId: p.employeeId,
+        type: NotificationType.PAYROLL,
+        title: 'Salary Disbursed',
+        message: `Your salary for ${monthNames[p.month - 1]} ${p.year} has been disbursed and marked as paid.`,
+        referenceId: p.id,
+      });
+    }
 
     return {
       message: `Successfully marked ${payrolls.length} payroll(s) as paid`,
