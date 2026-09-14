@@ -460,6 +460,9 @@ jobs:
             echo "Image:"
             echo "$EXPECTED_IMAGE"
 
+            # Clean stale or dangling image layers on VPS
+            docker image prune -f || true
+
             docker pull "$EXPECTED_IMAGE"
 
             echo ""

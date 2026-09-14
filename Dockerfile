@@ -17,7 +17,7 @@ RUN apt-get update \
 
 COPY package*.json ./
 
-RUN npm install
+RUN npm install && npm cache clean --force && rm -rf /root/.npm
 
 COPY . .
 
@@ -42,7 +42,7 @@ ENV NODE_ENV=production
 
 COPY package*.json ./
 
-RUN npm install --omit=dev
+RUN npm install --omit=dev && npm cache clean --force && rm -rf /root/.npm
 
 COPY --from=builder /usr/src/app/dist ./dist
 
