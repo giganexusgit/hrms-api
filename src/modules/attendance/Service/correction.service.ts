@@ -220,9 +220,6 @@ export class CorrectionService {
               },
             },
           },
-          lock: {
-            mode: 'pessimistic_write',
-          },
         });
 
         if (!attendance) {
@@ -279,13 +276,17 @@ export class CorrectionService {
           ? `Your attendance correction request has been approved.`
           : `Your attendance correction request has been rejected.`;
 
-      await this.notificationService.createNotification({
-        employeeId: correction.employeeId,
-        type: NotificationType.ATTENDANCE,
-        title: `Attendance Correction ${status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()}`,
-        message,
-        referenceId: correction.id,
-      });
+      try {
+        await this.notificationService.createNotification({
+          employeeId: correction.employeeId,
+          type: NotificationType.ATTENDANCE,
+          title: `Attendance Correction ${status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()}`,
+          message,
+          referenceId: correction.id,
+        });
+      } catch {
+        // Notification failure should not fail attendance correction approval
+      }
 
       return {
         correction,

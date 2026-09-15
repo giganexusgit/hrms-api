@@ -1,5 +1,6 @@
 import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
+// Application bootstrap entry point
 import {
   ClassSerializerInterceptor,
   ValidationPipe,

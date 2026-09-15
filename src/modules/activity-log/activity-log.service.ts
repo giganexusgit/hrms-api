@@ -60,7 +60,7 @@ export class ActivityLogService {
       this.activityLogRepository.createQueryBuilder('log');
 
     this.tenantQueryService.applyTenantFilter(queryBuilder, 'log');
-    queryBuilder.leftJoinAndSelect(Employee, 'employee', 'employee.id = log.userId OR employee.id = log.employeeId');
+    queryBuilder.leftJoinAndMapOne('log.employee', Employee, 'employee', 'employee.id = log.userId OR employee.id = log.employeeId');
 
     if (currentUser) {
       this.dataScopeService.applyScope(queryBuilder, currentUser, {
@@ -150,7 +150,7 @@ export class ActivityLogService {
     const qb = this.activityLogRepository.createQueryBuilder('log');
     this.tenantQueryService.applyTenantFilter(qb, 'log');
 
-    qb.leftJoinAndSelect(Employee, 'employee', 'employee.id = log.userId OR employee.id = log.employeeId');
+    qb.leftJoinAndMapOne('log.employee', Employee, 'employee', 'employee.id = log.userId OR employee.id = log.employeeId');
     qb.andWhere("(log.action IN ('APPROVE', 'REJECT', 'EXECUTE') OR log.description ILIKE '%approve%' OR log.description ILIKE '%reject%' OR log.description ILIKE '%resignation%' OR log.description ILIKE '%movement%')");
 
     if (currentUser) {

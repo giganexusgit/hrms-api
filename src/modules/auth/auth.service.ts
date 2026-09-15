@@ -499,4 +499,51 @@ export class AuthService {
       throw new UnauthorizedException('Reset token expired or invalid');
     }
   }
+
+  async terminateSession(data: { userId?: string; email?: string; sessionId?: string }) {
+    let targetEmployee: Employee | null = null;
+
+    if (data.userId) {
+      targetEmployee = await this.employeeRepository.findOne({
+        where: { id: data.userId },
+      });
+    }
+    
+    if (!targetEmployee && data.email) {
+      targetEmployee = await this.employeeRepository.findOne({
+        where: { email: data.email },
+      });
+    }
+
+    if (targetEmployee) {
+      // Revoke all active refresh tokens for this employee
+      await this.refreshTokenRepository.update(
+        { employeeId: targetEmployee.id, isRevoked: false },
+        { isRevoked: true },
+      );
+
+      // Invalidate active JWTs by bumping passwordVersion / session
+      targetEmployee.passwordVersion = (targetEmployee.passwordVersion || 1) + 1;
+      await this.employeeRepository.save(targetEmployee);
+
+      // Log Auth Event for Session Termination
+      this.authLogService.logEvent({
+        userId: targetEmployee.id,
+        tenantId: targetEmployee.tenantId || this.cls.get('tenantId'),
+        branchId: targetEmployee.branchId || this.cls.get('branchId'),
+        event: AuthEvent.LOGOUT,
+        status: AuthStatus.SUCCESS,
+        reason: 'Session terminated by Administrator',
+        ipAddress: this.cls.get('ipAddress') || '127.0.0.1',
+        device: 'Admin Console',
+      });
+    }
+
+    return {
+      success: true,
+      message: targetEmployee 
+        ? `Active session for ${targetEmployee.firstName} ${targetEmployee.lastName} has been terminated.` 
+        : 'Session terminated successfully.',
+    };
+  }
 }

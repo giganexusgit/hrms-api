@@ -59,6 +59,14 @@ export class AuthController {
     return this.authService.logout(dto.refreshToken);
   }
 
+  @Post('terminate-session')
+  terminateSession(
+    @Body()
+    dto: { userId?: string; email?: string; sessionId?: string },
+  ) {
+    return this.authService.terminateSession(dto);
+  }
+
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Public()
   @Post('forgot-password')

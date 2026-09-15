@@ -45,7 +45,7 @@ export class AuthLogService {
     const qb = this.authLogRepository.createQueryBuilder('authLog');
 
     this.tenantQueryService.applyTenantFilter(qb, 'authLog');
-    qb.leftJoinAndSelect(Employee, 'employee', 'employee.id = authLog.userId');
+    qb.leftJoinAndMapOne('authLog.employee', Employee, 'employee', 'employee.id = authLog.userId');
 
     if (currentUser) {
       this.dataScopeService.applyScope(qb, currentUser, {
