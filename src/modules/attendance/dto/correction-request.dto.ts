@@ -1,6 +1,10 @@
 import { IsString, IsOptional } from 'class-validator';
 
 export class CorrectionRequestDto {
+  @IsOptional()
+  @IsString()
+  employeeId?: string;
+
   @IsString()
   date!: string;
 
@@ -13,3 +17,4 @@ export class CorrectionRequestDto {
   @IsOptional()
   requestedCheckOut?: string;
 }
+

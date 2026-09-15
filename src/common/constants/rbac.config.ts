@@ -140,8 +140,10 @@ export const RBAC_CONFIG = {
     PermissionEnum.RESIGNATION_CREATE,
     PermissionEnum.RESIGNATION_READ,
 
+    PermissionEnum.LEAVE_POLICY_CREATE,
     PermissionEnum.LEAVE_POLICY_READ,
-
+    
+    PermissionEnum.LEAVE_TYPE_CREATE,
     PermissionEnum.LEAVE_TYPE_READ,
 
     PermissionEnum.NOTIFICATION_READ,

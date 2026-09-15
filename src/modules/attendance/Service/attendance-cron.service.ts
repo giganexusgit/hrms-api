@@ -107,11 +107,11 @@ export class AttendanceCronService {
           let absoluteMaxTime: dayjs.Dayjs;
           let officialShiftEndTime: dayjs.Dayjs;
 
-          const graceMinutes = shift.maxAllowedOvertimeMinutes || 240;
+          const graceMinutes = shift.maxAllowedOvertimeMinutes ?? 240;
 
           if (shift.isFlexible) {
             officialShiftEndTime = dayjsIST(attendance.checkIn).add(
-              shift.standardWorkingMinutes || 480,
+              shift.standardWorkingMinutes ?? 480,
               'minute',
             );
             absoluteMaxTime = officialShiftEndTime.add(
@@ -161,6 +161,7 @@ export class AttendanceCronService {
 
             attendance.checkOut = autoCheckoutTime.toDate();
             attendance.workedMinutes = totalWorkedMinutes;
+            attendance.overtimeMinutes = 0;
             attendance.isAutoCheckout = true;
             attendance.workStatus = EmployeeWorkStatus.NOT_WORKING;
 
@@ -462,7 +463,7 @@ export class AttendanceCronService {
             .second(0)
             .millisecond(0);
           const absoluteLatestCheckIn = shiftStartTime.add(
-            shift.latestCheckInMinutes || 240,
+            shift.latestCheckInMinutes ?? 240,
             'minute',
           );
 

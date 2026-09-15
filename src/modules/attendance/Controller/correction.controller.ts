@@ -22,6 +22,7 @@ export class CorrectionController {
     @Body()
     dto: CorrectionRequestDto,
   ) {
-    return this.correctionService.requestCorrection(employee.id, dto);
+    const targetEmployeeId = dto.employeeId || employee.id;
+    return this.correctionService.requestCorrection(targetEmployeeId, dto);
   }
 }
