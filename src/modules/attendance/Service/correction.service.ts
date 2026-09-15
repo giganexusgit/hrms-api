@@ -9,11 +9,12 @@ import { Employee } from '../../employees/entities/employee.entity';
 import { CorrectionRequestDto } from '../dto/correction-request.dto';
 import { CorrectionStatus } from '../../../common/enums/CorrectionStatus.enum';
 import { AttendanceStatus } from '../../../common/enums/AttendanceStatus.enum';
-import { formatIST, dayjsIST } from '../../../utils/time.util';
+import { formatIST, dayjsIST, parseISTDate } from '../../../utils/time.util';
 import { DataScopeService } from '../../../common/services/data-scope.service';
 import { NotificationService } from '../../notification/notification.service';
 import { NotificationType } from '../../../common/enums/NotificationType.enum';
 import { TenantQueryService } from '../../../common/services/tenant-query.service';
+import { AttendanceValidationService } from './attendance-validation.service';
 
 dayjs.extend(isBetween);
 
@@ -28,6 +29,7 @@ export class CorrectionService {
     private readonly dataScopeService: DataScopeService,
     private readonly notificationService: NotificationService,
     private readonly tenantQueryService: TenantQueryService,
+    private readonly validationService: AttendanceValidationService,
   ) {}
 
   async requestCorrection(employeeId: string, dto: CorrectionRequestDto) {
@@ -59,11 +61,11 @@ export class CorrectionService {
     }
 
     const requestedCheckIn = dto.requestedCheckIn
-      ? new Date(dto.requestedCheckIn)
+      ? parseISTDate(dto.requestedCheckIn, dto.date)
       : null;
 
     const requestedCheckOut = dto.requestedCheckOut
-      ? new Date(dto.requestedCheckOut)
+      ? parseISTDate(dto.requestedCheckOut, dto.date)
       : null;
 
     const reason = dto.reason?.trim();
@@ -78,19 +80,22 @@ export class CorrectionService {
       throw new BadRequestException('Reason is required');
     }
 
-    const sameCheckIn =
-      attendance.checkIn &&
+    const isCheckInIdentical =
       requestedCheckIn &&
+      attendance.checkIn &&
       attendance.checkIn.getTime() === requestedCheckIn.getTime();
 
-    const sameCheckOut =
-      attendance.checkOut &&
+    const isCheckOutIdentical =
       requestedCheckOut &&
+      attendance.checkOut &&
       attendance.checkOut.getTime() === requestedCheckOut.getTime();
 
-    if (sameCheckIn || sameCheckOut) {
+    const isNoCheckInChange = !requestedCheckIn || Boolean(isCheckInIdentical);
+    const isNoCheckOutChange = !requestedCheckOut || Boolean(isCheckOutIdentical);
+
+    if (isNoCheckInChange && isNoCheckOutChange) {
       throw new BadRequestException(
-        'Requested time is same as current attendance',
+        'Requested times are identical to current attendance record',
       );
     }
 
@@ -117,11 +122,47 @@ export class CorrectionService {
     };
   }
 
-  private calculateStatus(checkIn: Date): AttendanceStatus {
+  private calculateStatus(checkIn: Date, employee?: Employee): AttendanceStatus {
     const time = dayjsIST(checkIn);
 
-    const presentEnd = time.startOf('day').hour(10).minute(30).second(0);
-    const lateEnd = time.startOf('day').hour(12).minute(30).second(0);
+    if (employee) {
+      try {
+        const shift = this.validationService.getEffectiveShift(employee);
+        const [startHour, startMinute] = shift.startTime.split(':').map(Number);
+        const [endHour] = shift.endTime.split(':').map(Number);
+
+        let shiftStartTime = time
+          .clone()
+          .hour(startHour)
+          .minute(startMinute)
+          .second(0)
+          .millisecond(0);
+
+        const isCrossMidnight = shift.crossMidnight || endHour < startHour;
+        if (isCrossMidnight && time.hour() < startHour && time.hour() < 12) {
+          shiftStartTime = shiftStartTime.subtract(1, 'day');
+        }
+
+        const graceTime = shiftStartTime.add(shift.lateGraceMinutes, 'minute');
+        const halfDayTime = shiftStartTime.add(
+          shift.halfDayThresholdMinutes,
+          'minute',
+        );
+
+        if (time.isAfter(halfDayTime)) {
+          return AttendanceStatus.HALF_DAY;
+        } else if (time.isAfter(graceTime)) {
+          return AttendanceStatus.LATE;
+        } else {
+          return AttendanceStatus.PRESENT;
+        }
+      } catch {
+        // Fallback to standard time thresholds if employee has no shift assigned
+      }
+    }
+
+    const presentEnd = time.clone().startOf('day').hour(11).minute(0).second(0);
+    const lateEnd = time.clone().startOf('day').hour(12).minute(30).second(0);
 
     if (time.isBefore(presentEnd) || time.isSame(presentEnd)) {
       return AttendanceStatus.PRESENT;
@@ -168,6 +209,17 @@ export class CorrectionService {
             id: correction.attendanceId,
             tenantId,
           },
+          relations: {
+            employee: {
+              shift: true,
+              branch: {
+                defaultShift: true,
+                organization: {
+                  defaultShift: true,
+                },
+              },
+            },
+          },
           lock: {
             mode: 'pessimistic_write',
           },
@@ -194,21 +246,25 @@ export class CorrectionService {
         }
 
         if (attendance.checkIn && attendance.checkOut) {
-          const workedMinutes = Math.floor(
+          const breakMins = attendance.totalBreakMinutes || 0;
+          const grossMinutes = Math.floor(
             (attendance.checkOut.getTime() - attendance.checkIn.getTime()) /
               60000,
           );
+          const workedMinutes = Math.max(0, grossMinutes - breakMins);
 
           attendance.workedMinutes = workedMinutes;
           attendance.overtimeMinutes =
             workedMinutes > 480 ? workedMinutes - 480 : 0;
-          attendance.status = this.calculateStatus(attendance.checkIn);
+          attendance.status = this.calculateStatus(attendance.checkIn, attendance.employee);
 
           if (workedMinutes < 480) {
             attendance.earlyCheckoutReason = correction.reason;
           } else {
             attendance.earlyCheckoutReason = null;
           }
+        } else if (attendance.checkIn) {
+          attendance.status = this.calculateStatus(attendance.checkIn, attendance.employee);
         }
 
         updatedAttendance = await manager.save(attendance, {
@@ -293,10 +349,10 @@ export class CorrectionService {
             }
           : null,
         attendanceId: correction.attendanceId,
-        currentCheckIn: correction.currentCheckIn,
-        currentCheckOut: correction.currentCheckOut,
-        requestedCheckIn: correction.requestedCheckIn,
-        requestedCheckOut: correction.requestedCheckOut,
+        currentCheckIn: formatIST(correction.currentCheckIn),
+        currentCheckOut: formatIST(correction.currentCheckOut),
+        requestedCheckIn: formatIST(correction.requestedCheckIn),
+        requestedCheckOut: formatIST(correction.requestedCheckOut),
         reason: correction.reason,
         status: correction.status,
         reviewedBy: correction.reviewer
@@ -306,8 +362,8 @@ export class CorrectionService {
             }
           : null,
         reviewComment: correction.reviewComment,
-        reviewedAt: correction.reviewedAt,
-        createdAt: correction.createdAt,
+        reviewedAt: formatIST(correction.reviewedAt),
+        createdAt: formatIST(correction.createdAt),
       })),
       meta: {
         total,

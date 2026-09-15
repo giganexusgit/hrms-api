@@ -6,6 +6,10 @@ import { Attendance } from '../entities/attendance.entity';
 import { DataSource } from 'typeorm';
 import { BadRequestException } from '@nestjs/common';
 import { CorrectionStatus } from '../../../common/enums/CorrectionStatus.enum';
+import { DataScopeService } from '../../../common/services/data-scope.service';
+import { NotificationService } from '../../notification/notification.service';
+import { TenantQueryService } from '../../../common/services/tenant-query.service';
+import { AttendanceValidationService } from './attendance-validation.service';
 
 describe('CorrectionService', () => {
   let service: CorrectionService;
@@ -50,6 +54,28 @@ describe('CorrectionService', () => {
       transaction: jest.fn().mockImplementation((cb) => cb(mockEntityManager)),
     };
 
+    const mockDataScopeService = {
+      applyScope: jest.fn(),
+    };
+
+    const mockNotificationService = {
+      createNotification: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const mockTenantQueryService = {
+      getTenantWhereClause: jest.fn().mockReturnValue({ tenantId: 'tenant-123' }),
+      applyTenantFilter: jest.fn(),
+    };
+
+    const mockValidationService = {
+      getEffectiveShift: jest.fn().mockReturnValue({
+        startTime: '09:30',
+        endTime: '18:30',
+        lateGraceMinutes: 30,
+        halfDayThresholdMinutes: 120,
+      }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CorrectionService,
@@ -59,6 +85,10 @@ describe('CorrectionService', () => {
         },
         { provide: getRepositoryToken(Attendance), useFactory: mockRepository },
         { provide: DataSource, useValue: mockDataSource },
+        { provide: DataScopeService, useValue: mockDataScopeService },
+        { provide: NotificationService, useValue: mockNotificationService },
+        { provide: TenantQueryService, useValue: mockTenantQueryService },
+        { provide: AttendanceValidationService, useValue: mockValidationService },
       ],
     }).compile();
 
