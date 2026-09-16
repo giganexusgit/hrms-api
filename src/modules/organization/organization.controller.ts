@@ -63,7 +63,6 @@ export class OrganizationController {
   // --- Organization Core ---
 
   @Get()
-  @Permissions(PermissionEnum.ORGANIZATION_READ)
   @ApiOperation({ summary: 'Get the singleton organization profile' })
   async getOrganization() {
     return this.organizationService.get();
@@ -233,7 +232,13 @@ export class OrganizationController {
   // --- Branch ---
 
   @Get('branch')
-  @Permissions(PermissionEnum.ORGANIZATION_READ)
+  @Permissions(
+    PermissionEnum.BRANCH_READ,
+    PermissionEnum.ORGANIZATION_READ,
+    PermissionEnum.REPORT_READ,
+    PermissionEnum.REPORT_ALL_READ,
+    PermissionEnum.EMPLOYEE_READ,
+  )
   @ApiOperation({ summary: 'Get all branches' })
   async getBranches(@CurrentUser() user: any) {
     return this.branchService.findAll(user);

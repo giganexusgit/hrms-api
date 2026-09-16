@@ -54,4 +54,8 @@ export class CreateCandidateDto {
   @IsOptional()
   @IsString()
   source?: string;
+
+  @IsOptional()
+  @IsString()
+  recaptchaToken?: string;
 }

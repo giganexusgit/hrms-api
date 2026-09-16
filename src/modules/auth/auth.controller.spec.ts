@@ -3,6 +3,8 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { Response } from 'express';
 
+import { RecaptchaGuard } from '../../common/guards/recaptcha.guard';
+
 describe('AuthController', () => {
   let controller: AuthController;
 
@@ -23,7 +25,10 @@ describe('AuthController', () => {
           useValue: mockAuthService,
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(RecaptchaGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<AuthController>(AuthController);
   });

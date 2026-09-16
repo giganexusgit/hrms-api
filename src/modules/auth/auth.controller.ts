@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, Res } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Res, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 
 import type { Response } from 'express';
@@ -19,12 +19,17 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 
 import { ResetPasswordDto } from './dto/reset-password.dto';
 
+import { RecaptchaGuard } from '../../common/guards/recaptcha.guard';
+import { RequireRecaptcha } from '../../common/decorators/recaptcha.decorator';
+
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   // @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Public()
+  @UseGuards(RecaptchaGuard)
+  @RequireRecaptcha('login')
   @Post('login')
   login(
     @Body()
@@ -69,6 +74,8 @@ export class AuthController {
 
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Public()
+  @UseGuards(RecaptchaGuard)
+  @RequireRecaptcha('forgot_password')
   @Post('forgot-password')
   forgotPassword(
     @Body()

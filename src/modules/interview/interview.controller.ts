@@ -19,6 +19,8 @@ import { RoleEnum } from '../../common/enums/role.enum';
 import { Public } from '../auth/decorators/public.decorator';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { PermissionEnum } from 'src/common/enums/permission.enum';
+import { RecaptchaGuard } from '../../common/guards/recaptcha.guard';
+import { RequireRecaptcha } from '../../common/decorators/recaptcha.decorator';
 
 @Controller('interview')
 export class InterviewController {
@@ -38,6 +40,8 @@ export class InterviewController {
   }
 
   @Public()
+  @UseGuards(RecaptchaGuard)
+  @RequireRecaptcha('job_application')
   @Post('public/jobs/:id/apply')
   applyToJob(
     @Param('id', ParseUUIDPipe) id: string,
