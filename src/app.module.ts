@@ -57,6 +57,7 @@ import { EmployeeSkillModule } from './modules/employee-skill/employee-skill.mod
 import { EmployeeBankModule } from './modules/employee-bank/employee-bank.module';
 import { CareerMovementsModule } from './modules/career-movements/career-movements.module';
 import { ResignationsModule } from './modules/resignations/resignations.module';
+import { ReportsModule } from './modules/reports/reports.module';
 
 @Module({
   imports: [
@@ -141,6 +142,7 @@ import { ResignationsModule } from './modules/resignations/resignations.module';
     EmployeeBankModule,
     CareerMovementsModule,
     ResignationsModule,
+    ReportsModule,
   ],
 
   providers: [

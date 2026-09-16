@@ -144,4 +144,8 @@ export enum PermissionEnum {
   AUDIT_LOG_READ = 'audit_log.read',
   
   AUTH_LOG_READ = 'auth_log.read',
+
+  // REPORTS
+  REPORT_READ = 'report.read',
+  REPORT_ALL_READ = 'report_all.read',
 }

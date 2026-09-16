@@ -240,6 +240,7 @@ export class DashboardService {
 
     // 1. Employee Count
     const employeeQb = this.employeeRepo.createQueryBuilder('employee');
+    this.tenantQueryService.applyTenantFilter(employeeQb, 'employee');
     this.dataScopeService.applyScope(employeeQb, currentUser, {
       branch: 'employee.branchId',
       department: 'employee.departmentId',
@@ -252,6 +253,7 @@ export class DashboardService {
         .createQueryBuilder('application')
         .innerJoin('application.job', 'job')
         .where('application.status = :status', { status });
+      this.tenantQueryService.applyTenantFilter(qb, 'application');
       this.dataScopeService.applyScope(qb, currentUser, {
         branch: 'job.branchId',
         department: 'job.departmentId',
@@ -272,6 +274,7 @@ export class DashboardService {
       .leftJoinAndSelect('attendance.employee', 'employee')
       .leftJoinAndSelect('employee.department', 'department')
       .where('attendance.date = :today', { today: todayIST() });
+    this.tenantQueryService.applyTenantFilter(todayAttendanceQb, 'attendance');
     this.dataScopeService.applyScope(todayAttendanceQb, currentUser, {
       branch: 'employee.branchId',
       department: 'employee.departmentId',
@@ -284,6 +287,7 @@ export class DashboardService {
       .innerJoin('payroll.employee', 'employee')
       .where('payroll.month = :month', { month: dayjs().month() + 1 })
       .andWhere('payroll.year = :year', { year: dayjs().year() });
+    this.tenantQueryService.applyTenantFilter(payrollQb, 'payroll');
     this.dataScopeService.applyScope(payrollQb, currentUser, {
       branch: 'employee.branchId',
       department: 'employee.departmentId',
@@ -557,6 +561,7 @@ export class DashboardService {
       })
       .groupBy('attendance.status');
 
+    this.tenantQueryService.applyTenantFilter(qb, 'attendance');
     this.dataScopeService.applyScope(qb, currentUser, {
       branch: 'employee.branchId',
       department: 'employee.departmentId',
@@ -624,6 +629,7 @@ export class DashboardService {
       })
       .groupBy('attendance.status');
 
+    this.tenantQueryService.applyTenantFilter(qb, 'attendance');
     this.dataScopeService.applyScope(qb, currentUser, {
       branch: 'employee.branchId',
       department: 'employee.departmentId',
@@ -689,6 +695,7 @@ export class DashboardService {
       .groupBy('employee.departmentId')
       .addGroupBy('attendance.status');
 
+    this.tenantQueryService.applyTenantFilter(qb, 'attendance');
     this.dataScopeService.applyScope(qb, currentUser, {
       branch: 'employee.branchId',
       department: 'employee.departmentId',
@@ -754,6 +761,7 @@ export class DashboardService {
         .createQueryBuilder('leave')
         .leftJoin('leave.employee', 'employee')
         .where('leave.status = :status', { status });
+      this.tenantQueryService.applyTenantFilter(qb, 'leave');
       this.dataScopeService.applyScope(qb, currentUser, {
         branch: 'employee.branchId',
         department: 'employee.departmentId',
@@ -777,6 +785,7 @@ export class DashboardService {
         date: dayjs(today).add(1, 'day').format('YYYY-MM-DD'),
       });
 
+    this.tenantQueryService.applyTenantFilter(upcomingQb, 'leave');
     this.dataScopeService.applyScope(upcomingQb, currentUser, {
       branch: 'employee.branchId',
       department: 'employee.departmentId',

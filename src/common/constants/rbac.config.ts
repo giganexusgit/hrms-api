@@ -108,6 +108,9 @@ export const RBAC_CONFIG = {
 
     PermissionEnum.AUDIT_LOG_READ,
     PermissionEnum.AUTH_LOG_READ,
+
+    PermissionEnum.REPORT_READ,
+    PermissionEnum.REPORT_ALL_READ,
   ],
 
   //   [RoleEnum.MANAGER]: [PermissionEnum.EMPLOYEE_READ],
@@ -152,5 +155,7 @@ export const RBAC_CONFIG = {
     PermissionEnum.NOTIFICATION_SETTINGS_READ,
 
     PermissionEnum.SHIFT_READ,
+
+    PermissionEnum.REPORT_READ,
   ],
 };

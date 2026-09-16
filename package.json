@@ -26,7 +26,8 @@
     "migration:revert": "npm run typeorm migration:revert",
     "migration:run:prod": "typeorm migration:run -d dist/database/data-source.js",
     "seed": "ts-node src/database/seeds/seed.ts",
-    "seed:permissions": "ts-node src/database/seeds/sync-permissions.ts"
+    "seed:permissions": "ts-node src/database/seeds/sync-permissions.ts",
+    "seed:permissions:prod": "node dist/database/seeds/sync-permissions.js"
   },
   "dependencies": {
     "@nestjs-modules/mailer": "^2.3.6",

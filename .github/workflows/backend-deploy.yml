@@ -662,6 +662,23 @@ jobs:
 
 
             # ======================================================
+            # RBAC Permissions & Role Sync
+            # ======================================================
+
+            echo ""
+            echo "=========================================="
+            echo "SYNCING RBAC PERMISSIONS & ROLES"
+            echo "=========================================="
+
+            docker exec \
+              hrms_backend_prod \
+              npm run seed:permissions:prod
+
+            echo ""
+            echo "RBAC permissions sync: PASSED"
+
+
+            # ======================================================
             # HTTP health check
             # ======================================================
 

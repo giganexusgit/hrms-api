@@ -37,6 +37,16 @@ export class PermissionsGuard implements CanActivate {
 
     const user = request.user;
 
+    // Super Admin bypass: superadmin role has access to all resources
+    const isSuperAdmin =
+      user?.role?.name === 'SUPER_ADMIN' ||
+      user?.role?.name === 'ADMIN' ||
+      user?.role?.isProtected === true;
+
+    if (isSuperAdmin) {
+      return true;
+    }
+
     const userPermissions =
       user?.role?.permissions?.map((permission: any) => permission.name) || [];
 
