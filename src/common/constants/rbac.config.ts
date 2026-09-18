@@ -9,6 +9,9 @@ export const RBAC_CONFIG = {
     PermissionEnum.EMPLOYEE_READ,
     PermissionEnum.EMPLOYEE_UPDATE,
 
+    PermissionEnum.ROLE_READ,
+    PermissionEnum.ASSIGN_ROLE_READ,
+
     PermissionEnum.DEPARTMENT_CREATE,
     PermissionEnum.DEPARTMENT_READ,
     PermissionEnum.DEPARTMENT_UPDATE,
