@@ -26,7 +26,7 @@ import { PermissionEnum } from 'src/common/enums/permission.enum';
 export class EmployeeExperienceController {
   constructor(private readonly experienceService: EmployeeExperienceService) {}
 
-  @Permissions(PermissionEnum.EMPLOYEE_CREATE)
+  @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
   @Post()
   @ApiOperation({ summary: 'Add a new past experience record for an employee' })
   create(
@@ -65,7 +65,7 @@ export class EmployeeExperienceController {
     return this.experienceService.update(id, updateDto, user);
   }
 
-  @Permissions(PermissionEnum.EMPLOYEE_DELETE)
+  @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete an experience record' })
   remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {

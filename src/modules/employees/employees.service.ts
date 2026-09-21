@@ -566,7 +566,25 @@ export class EmployeesService {
       throw new NotFoundException('Employee not found');
     }
 
-    if (currentUser && employee.role) {
+    const isSelfEdit =
+      currentUser &&
+      currentUser.id === employee.id &&
+      (currentUser.role?.authorityLevel ?? 0) < 50;
+
+    if (isSelfEdit) {
+      // Employees cannot edit their own organizational fields
+      delete dto.roleId;
+      delete dto.employmentType;
+      delete dto.employmentStatus;
+      delete dto.branchId;
+      delete dto.departmentId;
+      delete dto.designationId;
+      delete dto.shiftId;
+      delete dto.joiningDate;
+      delete dto.isActive;
+    }
+
+    if (currentUser && employee.role && currentUser.id !== employee.id) {
       this.validateAuthorityLevel(currentUser, employee.role.authorityLevel, 'modify');
     }
 

@@ -27,7 +27,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 export class EmployeeAddressController {
   constructor(private readonly addressService: EmployeeAddressService) {}
 
-  @Permissions(PermissionEnum.EMPLOYEE_CREATE)
+  @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
   @Post()
   @ApiOperation({ summary: 'Create a new address for an employee' })
   create(
@@ -66,7 +66,7 @@ export class EmployeeAddressController {
     return this.addressService.update(id, updateDto, user);
   }
 
-  @Permissions(PermissionEnum.EMPLOYEE_DELETE)
+  @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete an address' })
   remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {

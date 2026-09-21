@@ -31,6 +31,7 @@ export class EmployeeEmergencyContactService {
       this.dataScopeService.applyScope(qb, currentUser, {
         branch: 'employee.branchId',
         department: 'employee.departmentId',
+        employee: 'employee.id',
       });
     }
     const emp = await qb.getOne();
@@ -58,6 +59,7 @@ export class EmployeeEmergencyContactService {
       this.dataScopeService.applyScope(qb, currentUser, {
         branch: 'employee.branchId',
         department: 'employee.departmentId',
+        employee: 'contact.employeeId',
       });
     }
     return qb.getMany();
@@ -74,6 +76,7 @@ export class EmployeeEmergencyContactService {
       this.dataScopeService.applyScope(qb, currentUser, {
         branch: 'employee.branchId',
         department: 'employee.departmentId',
+        employee: 'contact.employeeId',
       });
     }
     const contact = await qb.getOne();

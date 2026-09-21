@@ -26,7 +26,7 @@ import { PermissionEnum } from 'src/common/enums/permission.enum';
 export class EmployeeFamilyController {
   constructor(private readonly familyService: EmployeeFamilyService) {}
 
-  @Permissions(PermissionEnum.EMPLOYEE_CREATE)
+  @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
   @Post()
   @ApiOperation({ summary: 'Create a new family member for an employee' })
   create(
@@ -65,7 +65,7 @@ export class EmployeeFamilyController {
     return this.familyService.update(id, updateDto, user);
   }
 
-  @Permissions(PermissionEnum.EMPLOYEE_DELETE)
+  @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a family member' })
   remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {

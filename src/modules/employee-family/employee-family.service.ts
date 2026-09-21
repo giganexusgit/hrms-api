@@ -31,6 +31,7 @@ export class EmployeeFamilyService {
       this.dataScopeService.applyScope(qb, currentUser, {
         branch: 'employee.branchId',
         department: 'employee.departmentId',
+        employee: 'employee.id',
       });
     }
     const emp = await qb.getOne();
@@ -52,6 +53,7 @@ export class EmployeeFamilyService {
       this.dataScopeService.applyScope(qb, currentUser, {
         branch: 'employee.branchId',
         department: 'employee.departmentId',
+        employee: 'family.employeeId',
       });
     }
     return qb.getMany();
@@ -68,6 +70,7 @@ export class EmployeeFamilyService {
       this.dataScopeService.applyScope(qb, currentUser, {
         branch: 'employee.branchId',
         department: 'employee.departmentId',
+        employee: 'family.employeeId',
       });
     }
     const familyMember = await qb.getOne();

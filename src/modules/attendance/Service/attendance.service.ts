@@ -12,6 +12,7 @@ import { formatAttendanceResponse } from '../helpers/attendance-response.helper'
 import { TenantQueryService } from '../../../common/services/tenant-query.service';
 import { NotificationService } from '../../notification/notification.service';
 import { NotificationType } from '../../../common/enums/NotificationType.enum';
+import { PermissionEnum } from '../../../common/enums/permission.enum';
 import { ActivityLogService } from '../../activity-log/activity-log.service';
 import { ActivityAction } from '../../activity-log/enums/activity-action.enum';
 
@@ -111,6 +112,28 @@ export class AttendanceService {
 
       const saved = await manager.save(attendance, {
         reload: true,
+      });
+
+      const employeeName = employee.displayName || `${employee.firstName} ${employee.lastName || ''}`.trim() || employee.email;
+      const checkInTimeStr = dayjsIST(nowDate).format('HH:mm');
+
+      // Trigger Employee Notification
+      await this.notificationService.createNotification({
+        employeeId,
+        title: 'Check-In Successful',
+        message: `You checked in at ${checkInTimeStr} (${location || 'Office'}). Status: ${attendance.status}.`,
+        type: NotificationType.ATTENDANCE,
+        referenceId: saved.id,
+      });
+
+      // Notify managers / HR / Admins with attendance permissions
+      await this.notificationService.notifyUsersWithPermission({
+        permission: [PermissionEnum.ATTENDANCE_READ, PermissionEnum.ATTENDANCE_UPDATE],
+        title: 'Employee Checked In',
+        message: `${employeeName} checked in at ${checkInTimeStr} (${location || 'Office'}). Status: ${attendance.status}.`,
+        type: NotificationType.ATTENDANCE,
+        referenceId: saved.id,
+        excludeEmployeeId: employeeId,
       });
 
       this.activityLogService.logAction({
@@ -214,6 +237,28 @@ export class AttendanceService {
         reload: true,
       });
 
+      const employeeName = employee.displayName || `${employee.firstName} ${employee.lastName || ''}`.trim() || employee.email;
+      const checkOutTimeStr = dayjsIST(nowDate).format('HH:mm');
+
+      // Trigger Employee Notification
+      await this.notificationService.createNotification({
+        employeeId,
+        title: 'Check-Out Successful',
+        message: `You checked out at ${checkOutTimeStr}. Total worked: ${workedHours.toFixed(2)} hrs.`,
+        type: NotificationType.ATTENDANCE,
+        referenceId: saved.id,
+      });
+
+      // Notify managers / HR / Admins with attendance permissions
+      await this.notificationService.notifyUsersWithPermission({
+        permission: [PermissionEnum.ATTENDANCE_READ, PermissionEnum.ATTENDANCE_UPDATE],
+        title: 'Employee Checked Out',
+        message: `${employeeName} checked out at ${checkOutTimeStr}. Total worked: ${workedHours.toFixed(2)} hrs.`,
+        type: NotificationType.ATTENDANCE,
+        referenceId: saved.id,
+        excludeEmployeeId: employeeId,
+      });
+
       this.activityLogService.logAction({
         tenantId,
         userId: employeeId,
@@ -251,9 +296,16 @@ export class AttendanceService {
       const now = nowIST();
       const nowDate = now.toDate();
 
-      const attendance = await manager.findOne(Attendance, {
-        where: { employeeId, date: today, checkOut: IsNull(), tenantId },
-        lock: { mode: 'pessimistic_write' },
+      let attendance = await manager.findOne(Attendance, {
+        where: {
+          employeeId,
+          date: today,
+          checkOut: IsNull(),
+          tenantId,
+        },
+        lock: {
+          mode: 'pessimistic_write',
+        },
       });
 
       if (!attendance) {
@@ -280,14 +332,26 @@ export class AttendanceService {
       const saved = await manager.save(attendance);
 
       const remainingBreak = maxBreak - (attendance.totalBreakMinutes || 0);
+      const employeeName = employee.displayName || `${employee.firstName} ${employee.lastName || ''}`.trim() || employee.email;
+      const breakTimeStr = dayjsIST(nowDate).format('HH:mm');
 
-      // Trigger Notification
+      // Trigger Notification for Employee
       await this.notificationService.createNotification({
         employeeId,
         title: 'Break Started',
-        message: `Your break has started at ${dayjsIST(nowDate).format('HH:mm')}. You have ${remainingBreak} minutes remaining for today.`,
+        message: `Your break has started at ${breakTimeStr}. You have ${remainingBreak} minutes remaining for today.`,
         type: NotificationType.ATTENDANCE,
         referenceId: saved.id,
+      });
+
+      // Notify managers / HR / Admins with attendance permissions
+      await this.notificationService.notifyUsersWithPermission({
+        permission: [PermissionEnum.ATTENDANCE_READ, PermissionEnum.ATTENDANCE_UPDATE],
+        title: 'Employee Break Started',
+        message: `${employeeName} started a break at ${breakTimeStr}.`,
+        type: NotificationType.ATTENDANCE,
+        referenceId: saved.id,
+        excludeEmployeeId: employeeId,
       });
 
       // Audit / Activity Log
@@ -345,13 +409,25 @@ export class AttendanceService {
         ? ` Note: Total break duration (${saved.totalBreakMinutes} mins) has exceeded your shift allowance of ${maxBreak} mins.`
         : '';
 
-      // Trigger Notification
+      const employeeName = employee.displayName || `${employee.firstName} ${employee.lastName || ''}`.trim() || employee.email;
+
+      // Trigger Notification for Employee
       await this.notificationService.createNotification({
         employeeId,
         title: 'Break Ended',
         message: `Your break has ended. Session duration: ${sessionMinutes} minutes.${overBreakMsg} Work session resumed.`,
         type: NotificationType.ATTENDANCE,
         referenceId: saved.id,
+      });
+
+      // Notify managers / HR / Admins with attendance permissions
+      await this.notificationService.notifyUsersWithPermission({
+        permission: [PermissionEnum.ATTENDANCE_READ, PermissionEnum.ATTENDANCE_UPDATE],
+        title: 'Employee Break Ended',
+        message: `${employeeName} ended their break (${sessionMinutes} mins). Work session resumed.`,
+        type: NotificationType.ATTENDANCE,
+        referenceId: saved.id,
+        excludeEmployeeId: employeeId,
       });
 
       // Audit / Activity Log

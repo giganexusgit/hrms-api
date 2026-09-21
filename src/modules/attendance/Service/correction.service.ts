@@ -13,6 +13,7 @@ import { formatIST, dayjsIST, parseISTDate } from '../../../utils/time.util';
 import { DataScopeService } from '../../../common/services/data-scope.service';
 import { NotificationService } from '../../notification/notification.service';
 import { NotificationType } from '../../../common/enums/NotificationType.enum';
+import { PermissionEnum } from '../../../common/enums/permission.enum';
 import { TenantQueryService } from '../../../common/services/tenant-query.service';
 import { AttendanceValidationService } from './attendance-validation.service';
 
@@ -112,6 +113,39 @@ export class CorrectionService {
     });
 
     const saved = await this.correctionRepo.save(correction);
+
+    const employee = await this.correctionRepo.manager
+      .getRepository(Employee)
+      .findOne({ where: { id: employeeId, tenantId } });
+
+    const employeeName = employee
+      ? employee.displayName ||
+        `${employee.firstName} ${employee.lastName || ''}`.trim() ||
+        employee.email
+      : 'An employee';
+
+    // Trigger confirmation notification to employee
+    await this.notificationService.createNotification({
+      employeeId,
+      type: NotificationType.ATTENDANCE,
+      title: 'Correction Request Submitted',
+      message: `Your attendance correction request for ${dto.date} has been submitted. Status: PENDING.`,
+      referenceId: saved.id,
+    });
+
+    // Notify managers / HR / Admins with attendance correction permissions
+    await this.notificationService.notifyUsersWithPermission({
+      permission: [
+        PermissionEnum.ATTENDANCE_CORRECTION_READ,
+        PermissionEnum.ATTENDANCE_CORRECTION_UPDATE,
+        PermissionEnum.ATTENDANCE_READ,
+      ],
+      title: 'New Attendance Correction Request',
+      message: `${employeeName} submitted an attendance correction request for ${dto.date}. Reason: ${reason}.`,
+      type: NotificationType.ATTENDANCE,
+      referenceId: saved.id,
+      excludeEmployeeId: employeeId,
+    });
 
     return {
       ...saved,

@@ -13,6 +13,9 @@ import { NotificationType } from '../../common/enums/NotificationType.enum';
 import { NotificationPreference } from '../notification-preference/entities/notification-preference.entity';
 import { TenantQueryService } from '../../common/services/tenant-query.service';
 
+import { Employee } from '../employees/entities/employee.entity';
+import { PermissionEnum } from '../../common/enums/permission.enum';
+
 @Injectable()
 export class NotificationService {
   constructor(
@@ -62,6 +65,60 @@ export class NotificationService {
     const saved = await this.notificationRepo.save(notification);
 
     return this.mapNotification(saved);
+  }
+
+  async notifyUsersWithPermission(params: {
+    permission: PermissionEnum | PermissionEnum[] | string | string[];
+    title: string;
+    message: string;
+    type: NotificationType;
+    referenceId?: string;
+    excludeEmployeeId?: string;
+  }) {
+    try {
+      const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+      const permissions = Array.isArray(params.permission)
+        ? params.permission
+        : [params.permission];
+
+      const qb = this.notificationRepo.manager
+        .getRepository(Employee)
+        .createQueryBuilder('employee')
+        .innerJoin('employee.role', 'role')
+        .leftJoin('role.permissions', 'permission')
+        .where('employee.tenantId = :tenantId', { tenantId })
+        .andWhere('employee.isActive = true')
+        .andWhere('employee.deletedAt IS NULL')
+        .andWhere(
+          '(role.name = :superAdminRole OR role.isProtected = true OR permission.name IN (:...permissions))',
+          {
+            superAdminRole: 'SUPER_ADMIN',
+            permissions,
+          },
+        );
+
+      if (params.excludeEmployeeId) {
+        qb.andWhere('employee.id != :excludeEmployeeId', {
+          excludeEmployeeId: params.excludeEmployeeId,
+        });
+      }
+
+      const employees = await qb.getMany();
+
+      const notificationPromises = employees.map((emp) =>
+        this.createNotification({
+          employeeId: emp.id,
+          title: params.title,
+          message: params.message,
+          type: params.type,
+          referenceId: params.referenceId,
+        }),
+      );
+
+      await Promise.allSettled(notificationPromises);
+    } catch (error) {
+      console.error('Failed to notify users with permission:', error);
+    }
   }
 
   async findAll(employee: any, query: NotificationQueryDto) {

@@ -34,7 +34,7 @@ export class EmployeeDocumentsController {
     private readonly employeeDocumentsService: EmployeeDocumentsService,
   ) {}
 
-  @Permissions(PermissionEnum.EMPLOYEE_CREATE)
+  @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
   @Post()
   @UseInterceptors(
     FileInterceptor('file', {
@@ -104,7 +104,7 @@ export class EmployeeDocumentsController {
     return this.employeeDocumentsService.getEmployeeDocuments(employeeId, user);
   }
 
-  @Permissions(PermissionEnum.EMPLOYEE_DELETE)
+  @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
   @Delete(':documentId')
   deleteDocument(
     @Param('documentId', ParseUUIDPipe)

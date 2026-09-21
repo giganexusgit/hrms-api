@@ -43,6 +43,7 @@ export class EmployeeDocumentsService {
       this.dataScopeService.applyScope(qb, currentUser, {
         branch: 'employee.branchId',
         department: 'employee.departmentId',
+        employee: 'employee.id',
       });
     }
 
@@ -133,6 +134,7 @@ export class EmployeeDocumentsService {
       this.dataScopeService.applyScope(qb, currentUser, {
         branch: 'employee.branchId',
         department: 'employee.departmentId',
+        employee: 'employee.id',
       });
     }
 
@@ -171,6 +173,7 @@ export class EmployeeDocumentsService {
       this.dataScopeService.applyScope(qb, currentUser, {
         branch: 'employee.branchId',
         department: 'employee.departmentId',
+        employee: 'document.employeeId',
       });
     }
 

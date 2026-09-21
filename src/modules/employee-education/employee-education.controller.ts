@@ -26,7 +26,7 @@ import { PermissionEnum } from 'src/common/enums/permission.enum';
 export class EmployeeEducationController {
   constructor(private readonly educationService: EmployeeEducationService) {}
 
-  @Permissions(PermissionEnum.EMPLOYEE_CREATE)
+  @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
   @Post()
   @ApiOperation({
     summary: 'Add a new educational qualification for an employee',
@@ -69,7 +69,7 @@ export class EmployeeEducationController {
     return this.educationService.update(id, updateDto, user);
   }
 
-  @Permissions(PermissionEnum.EMPLOYEE_DELETE)
+  @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete an educational qualification' })
   remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {

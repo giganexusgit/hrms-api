@@ -26,7 +26,7 @@ import { PermissionEnum } from 'src/common/enums/permission.enum';
 export class EmployeeBankController {
   constructor(private readonly bankService: EmployeeBankService) {}
 
-  @Permissions(PermissionEnum.EMPLOYEE_CREATE)
+  @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
   @Post()
   @ApiOperation({ summary: 'Add a new bank account for an employee' })
   create(
@@ -65,7 +65,7 @@ export class EmployeeBankController {
     return this.bankService.update(id, updateDto, user);
   }
 
-  @Permissions(PermissionEnum.EMPLOYEE_DELETE)
+  @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a bank account' })
   remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {

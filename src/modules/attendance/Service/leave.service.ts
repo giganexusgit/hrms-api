@@ -23,6 +23,7 @@ import { NotificationType } from '../../../common/enums/NotificationType.enum';
 import { Holiday } from '../../holiday/entities/holiday.entity';
 import { WeekendSetting } from '../../weekend_settings/entities/weekend_setting.entity';
 import { TenantQueryService } from "../../../common/services/tenant-query.service";
+import { PermissionEnum } from '../../../common/enums/permission.enum';
 import { RoleEnum } from '../../../common/enums/role.enum';
 
 @Injectable()
@@ -220,6 +221,30 @@ export class LeaveService {
     });
 
     const saved = await this.leaveRepo.save(leave);
+
+    const employeeName =
+      employee.displayName ||
+      `${employee.firstName} ${employee.lastName || ''}`.trim() ||
+      employee.email;
+
+    // Send confirmation notification to the applicant
+    await this.notificationService.createNotification({
+      employeeId,
+      type: NotificationType.LEAVE,
+      title: 'Leave Request Submitted',
+      message: `Your leave request from ${dto.startDate} to ${dto.endDate} (${totalDays} days) has been submitted. Status: ${saved.status}.`,
+      referenceId: saved.id,
+    });
+
+    // Notify managers / HR / Admins with leave approval/read permissions
+    await this.notificationService.notifyUsersWithPermission({
+      permission: [PermissionEnum.LEAVE_APPROVAL, PermissionEnum.LEAVE_READ],
+      title: 'New Leave Application',
+      message: `${employeeName} requested leave from ${dto.startDate} to ${dto.endDate} (${totalDays} days). Reason: ${dto.reason || 'Not specified'}.`,
+      type: NotificationType.LEAVE,
+      referenceId: saved.id,
+      excludeEmployeeId: employeeId,
+    });
 
     if (!policy.requiresApproval) {
       await this.reviewLeave(

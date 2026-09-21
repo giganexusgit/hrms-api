@@ -27,7 +27,7 @@ export class EmployeeEmergencyContactController {
     private readonly contactService: EmployeeEmergencyContactService,
   ) {}
 
-  @Permissions(PermissionEnum.EMPLOYEE_CREATE)
+  @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
   @Post()
   @ApiOperation({ summary: 'Create a new emergency contact for an employee' })
   create(
@@ -66,7 +66,7 @@ export class EmployeeEmergencyContactController {
     return this.contactService.update(id, updateDto, user);
   }
 
-  @Permissions(PermissionEnum.EMPLOYEE_DELETE)
+  @Permissions(PermissionEnum.EMPLOYEE_UPDATE)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete an emergency contact' })
   remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
