@@ -74,9 +74,11 @@ export class NotificationService {
     type: NotificationType;
     referenceId?: string;
     excludeEmployeeId?: string;
+    tenantId?: string;
   }) {
     try {
-      const { tenantId } = this.tenantQueryService.getTenantWhereClause();
+      const tenantId =
+        params.tenantId || this.tenantQueryService.getTenantWhereClause().tenantId;
       const permissions = Array.isArray(params.permission)
         ? params.permission
         : [params.permission];
@@ -84,15 +86,16 @@ export class NotificationService {
       const qb = this.notificationRepo.manager
         .getRepository(Employee)
         .createQueryBuilder('employee')
-        .innerJoin('employee.role', 'role')
+        .innerJoinAndSelect('employee.role', 'role')
         .leftJoin('role.permissions', 'permission')
         .where('employee.tenantId = :tenantId', { tenantId })
         .andWhere('employee.isActive = true')
         .andWhere('employee.deletedAt IS NULL')
         .andWhere(
-          '(role.name = :superAdminRole OR role.isProtected = true OR permission.name IN (:...permissions))',
+          '(role.name IN (:...adminRoles) OR UPPER(role.name) LIKE :managerLike OR role.isProtected = true OR role.authorityLevel >= 30 OR permission.name IN (:...permissions))',
           {
-            superAdminRole: 'SUPER_ADMIN',
+            adminRoles: ['SUPER_ADMIN', 'ADMIN', 'HR', 'MANAGER', 'MANAGEMENT', 'SUPERADMIN', 'TEAM_LEAD'],
+            managerLike: '%MANAGER%',
             permissions,
           },
         );
@@ -104,8 +107,10 @@ export class NotificationService {
       }
 
       const employees = await qb.getMany();
+      // Deduplicate by employee.id in case the join produced duplicates
+      const uniqueEmployees = Array.from(new Map(employees.map((e) => [e.id, e])).values());
 
-      const notificationPromises = employees.map((emp) =>
+      const notificationPromises = uniqueEmployees.map((emp) =>
         this.createNotification({
           employeeId: emp.id,
           title: params.title,
