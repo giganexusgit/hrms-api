@@ -51,14 +51,15 @@ export class LeaveBalanceController {
   @Post('hr/leave-balance/run-credit')
   async runCredit(
     @CurrentUser() hrUser: any,
-    @Body() payload: { branchId?: string },
+    @Body() payload: { branchId?: string; leaveTypeId?: string; days?: number; remarks?: string },
   ) {
-    await this.leaveEngineService.executeMonthlyAccrual({
+    return this.leaveEngineService.executeCustomOrMonthlyAccrual({
       tenantId: hrUser.tenantId,
       branchId: payload?.branchId,
+      leaveTypeId: payload?.leaveTypeId,
+      days: payload?.days ? Number(payload.days) : undefined,
+      remarks: payload?.remarks,
+      hrUserId: hrUser?.id,
     });
-    return {
-      message: 'Monthly leave accrual credit executed successfully',
-    };
   }
 }

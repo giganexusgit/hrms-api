@@ -55,6 +55,10 @@ export class CreateLeavePolicyDto {
   carryForward?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  monthlyCarryForward?: boolean;
+
+  @IsOptional()
   @IsNumber()
   maxCarryForward?: number;
 

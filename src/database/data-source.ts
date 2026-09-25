@@ -13,8 +13,8 @@ const AppDataSource = new DataSource({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
 
-  entities: isTsNode ? ['src/**/*.entity.ts', 'dist/**/*.entity.js'] : ['dist/**/*.entity.js'],
-  migrations: isTsNode ? ['src/database/migrations/*.ts', 'dist/database/migrations/*.js'] : ['dist/database/migrations/*.js'],
+  entities: isTsNode ? ['src/**/*.entity.ts'] : ['dist/**/*.entity.js'],
+  migrations: isTsNode ? ['src/database/migrations/*.ts'] : ['dist/database/migrations/*.js'],
 
   synchronize: false,
 });

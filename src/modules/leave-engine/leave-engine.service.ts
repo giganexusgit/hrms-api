@@ -156,6 +156,123 @@ export class LeaveEngineService {
     }
   }
 
+  async executeCustomOrMonthlyAccrual(options: {
+    tenantId: string;
+    branchId?: string;
+    leaveTypeId?: string;
+    days?: number;
+    remarks?: string;
+    hrUserId?: string;
+  }) {
+    const { tenantId, branchId, leaveTypeId, days, remarks, hrUserId } = options;
+
+    // Mode 1: Targeted category & custom days bulk credit
+    if (leaveTypeId && leaveTypeId !== 'ALL' && days && Number(days) > 0) {
+      const whereClause: any = {
+        isActive: true,
+        tenantId,
+      };
+      if (branchId && branchId !== 'ALL') {
+        whereClause.branchId = branchId;
+      }
+
+      const employees = await this.employeeRepo.find({
+        select: { id: true },
+        where: whereClause,
+      });
+
+      const creditDays = Number(days);
+      const creditRemarks = remarks?.trim() || `Bulk Credit of ${creditDays} day(s) by HR`;
+
+      for (const emp of employees) {
+        await this.processTransaction({
+          employeeId: emp.id,
+          leaveTypeId,
+          transactionType: LeaveTransactionType.ACCRUAL,
+          days: creditDays,
+          referenceId: hrUserId,
+          remarks: creditRemarks,
+        });
+
+        await this.notificationService.createNotification({
+          employeeId: emp.id,
+          type: NotificationType.LEAVE,
+          title: 'Leave Balance Credited',
+          message: `Your leave balance has been credited with ${creditDays} day(s) (${creditRemarks}).`,
+        });
+      }
+
+      return {
+        message: `Successfully credited ${creditDays} day(s) to ${employees.length} employee(s).`,
+        creditedCount: employees.length,
+        days: creditDays,
+      };
+    }
+
+    // Mode 2: Policy-based Accrual (with optional days override)
+    const policyWhere: any = {
+      isActive: true,
+      accrualFrequency: 'MONTHLY' as any,
+      tenantId,
+    };
+    if (leaveTypeId && leaveTypeId !== 'ALL') {
+      policyWhere.leaveTypeId = leaveTypeId;
+    }
+
+    const policies = await this.leavePolicyRepo.find({
+      where: policyWhere,
+    });
+
+    let totalCreditedEmployees = 0;
+
+    for (const policy of policies) {
+      const rateToCredit = days && Number(days) > 0 ? Number(days) : policy.accrualRate;
+      if (rateToCredit <= 0) continue;
+
+      const eligibleEmployeeIds = await this.getEligibleEmployeesForPolicy(policy, branchId);
+
+      for (const empId of eligibleEmployeeIds) {
+        if (policy.monthlyCarryForward === false) {
+          // Reset/lapse unused balance from previous month so only current month's credit is available
+          const year = new Date().getFullYear();
+          const existingBal = await this.leaveBalanceRepo.findOne({
+            where: { employeeId: empId, leaveTypeId: policy.leaveTypeId, year, tenantId },
+          });
+          if (existingBal) {
+            const unused = Number(existingBal.accrued) - Number(existingBal.used);
+            if (unused > 0) {
+              existingBal.accrued = Number(existingBal.used);
+              await this.leaveBalanceRepo.save(existingBal);
+            }
+          }
+        }
+
+        await this.processTransaction({
+          employeeId: empId,
+          leaveTypeId: policy.leaveTypeId,
+          transactionType: LeaveTransactionType.ACCRUAL,
+          days: rateToCredit,
+          referenceId: hrUserId,
+          remarks: remarks?.trim() || 'Monthly Accrual',
+        });
+
+        await this.notificationService.createNotification({
+          employeeId: empId,
+          type: NotificationType.LEAVE,
+          title: 'Leave Balance Credited',
+          message: `Your monthly leave balance has been credited with ${rateToCredit} day(s).`,
+        });
+      }
+
+      totalCreditedEmployees += eligibleEmployeeIds.length;
+    }
+
+    return {
+      message: `Leave credit executed successfully for ${totalCreditedEmployees} employee record(s).`,
+      creditedCount: totalCreditedEmployees,
+    };
+  }
+
   private async runMonthlyAccrualForTenant(tenantId: string, branchId?: string) {
     const policies = await this.leavePolicyRepo.find({
       where: {
@@ -171,6 +288,20 @@ export class LeaveEngineService {
       const eligibleEmployeeIds = await this.getEligibleEmployeesForPolicy(policy, branchId);
 
       for (const empId of eligibleEmployeeIds) {
+        if (policy.monthlyCarryForward === false) {
+          const year = new Date().getFullYear();
+          const existingBal = await this.leaveBalanceRepo.findOne({
+            where: { employeeId: empId, leaveTypeId: policy.leaveTypeId, year, tenantId },
+          });
+          if (existingBal) {
+            const unused = Number(existingBal.accrued) - Number(existingBal.used);
+            if (unused > 0) {
+              existingBal.accrued = Number(existingBal.used);
+              await this.leaveBalanceRepo.save(existingBal);
+            }
+          }
+        }
+
         await this.processTransaction({
           employeeId: empId,
           leaveTypeId: policy.leaveTypeId,

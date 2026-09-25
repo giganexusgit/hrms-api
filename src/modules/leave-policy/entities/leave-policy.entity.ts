@@ -85,6 +85,9 @@ export class LeavePolicy extends TenantAwareEntity {
   @Column({ name: 'carry_forward', default: false })
   carryForward!: boolean;
 
+  @Column({ name: 'monthly_carry_forward', default: true })
+  monthlyCarryForward!: boolean;
+
   @Column({
     type: 'decimal',
     precision: 5,
